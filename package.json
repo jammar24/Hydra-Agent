@@ -1,0 +1,26 @@
+{
+  "name": "hybridagent",
+  "version": "1.0.0",
+  "description": "HybridAgent: Orquestador híbrido local/nube con sincronización en tiempo real para Firebase #BuildHybridAI 2026",
+  "license": "Apache-2.0",
+  "author": "Jamar Masias",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "firebase": "^9.14.0",
+    "lucide-react": "^0.475.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.1"
+  }
+}
