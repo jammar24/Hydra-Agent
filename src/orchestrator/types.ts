@@ -1,11 +1,11 @@
 /**
- * Contrato de Tipos para HybridAgent v2.5
- * Cumplimiento: RF-03, RF-04, RF-05, RF-07, RF-10, RF-13, RF-14, RF-15, RF-17
+ * Contrato de Tipos para HybridAgent Orchestrator v3.0
+ * Soporte: Enrutamiento Multidimensional, Zero-Trust Privacy, Modo Cascada Especulativo y Telemetría.
  */
 
-export type RoutingTarget = 'local' | 'cloud' | 'queue';
+export type RoutingTarget = 'local' | 'cloud' | 'queue' | 'cascade';
 export type ComplexityLevel = 'simple' | 'complex';
-export type RoutingMode = 'auto' | 'local_only' | 'cloud_only';
+export type RoutingMode = 'auto' | 'cascade' | 'local_only' | 'cloud_only';
 export type ModelStatus = 'not_available' | 'downloadable' | 'downloading' | 'ready';
 
 export interface ComplexityBreakdown {
@@ -15,6 +15,21 @@ export interface ComplexityBreakdown {
   intent: 'code' | 'reasoning' | 'summary_task' | 'general';
   complexityScore: number; // 0 a 100
   privacyForcedLocal: boolean;
+  // Métricas Multidimensionales del Orquestador v3.0:
+  privacyScore: number; // 0 - 100
+  latencySensitivityScore: number; // 0 - 100 (Alta sensibilidad: SLA < 300ms)
+  cloudSavingsScore: number; // 0 - 100 (% de ahorro de cómputo en nube)
+  confidenceScore: number; // 0 - 100 (Certeza matemática de la ruta)
+  estimatedCostUSD: number; // Costo evitado en la nube
+}
+
+export interface EvaluatorContext {
+  prompt: string;
+  isOnline: boolean;
+  modelStatus: ModelStatus;
+  mode: RoutingMode;
+  maxLocalTokens: number;
+  networkRTT?: number;
 }
 
 export interface RoutingDecision {
@@ -24,6 +39,7 @@ export interface RoutingDecision {
   breakdown: ComplexityBreakdown;
   decidedAt: number;
   evaluationMs: number;
+  speculativePlan?: string;
 }
 
 export interface TaskPayload {
@@ -47,7 +63,7 @@ export interface StructuredTaskItem {
 
 export interface WorkerExecutionResult {
   taskId: string;
-  source: 'local' | 'cloud';
+  source: 'local' | 'cloud' | 'cascade';
   content: string;
   structuredTasks?: StructuredTaskItem[];
   summary?: string;
@@ -58,16 +74,19 @@ export interface WorkerExecutionResult {
   breakdown: ComplexityBreakdown;
   isStreaming?: boolean;
   isRealHardware?: boolean;
+  speculativePreview?: string;
 }
 
 export interface OrchestratorMetric {
   id: string;
   taskId: string;
-  source: 'local' | 'cloud';
+  source: 'local' | 'cloud' | 'cascade';
   latencyMs: number;
   tokens: number;
   reason: string;
   timestamp: number;
   hasPII: boolean;
   score: number;
+  confidenceScore: number;
+  costSavedUSD: number;
 }

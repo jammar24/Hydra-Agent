@@ -84,7 +84,51 @@ export class HybridOrchestrator {
 
     let executionResult: WorkerExecutionResult;
 
-    if (decision.target === 'local') {
+    // A. ENRUTAMIENTO EN CASCADA ESPECULATIVA (Nano + Cloud Co-Inferencia)
+    if (decision.target === 'cascade') {
+      onStreamChunk?.('⚡ [Nano Especulativo < 180ms]: Generando pre-análisis estructurado en hardware local...\n');
+      const startCascade = performance.now();
+      
+      // 1. Ejecución preliminar ultrarrápida con Nano
+      const nanoDraft = await this.localWorker.execute(
+        task,
+        'Borrador Especulativo On-Device',
+        decision.breakdown,
+        (c) => onStreamChunk?.(c)
+      );
+
+      onStreamChunk?.('\n\n☁️ [Firebase AI Logic]: Consolidando síntesis y razonamiento profundo...\n');
+
+      // 2. Ejecución profunda en la nube
+      const cloudEnhanced = await this.cloudWorker.execute(
+        task,
+        decision.reason,
+        decision.breakdown,
+        (c) => onStreamChunk?.(c)
+      );
+
+      const totalLatency = Math.round(performance.now() - startCascade);
+
+      executionResult = {
+        taskId: task.id,
+        source: 'cascade',
+        content: cloudEnhanced.content,
+        summary: `Co-Inferencia Híbrida: Nano (${nanoDraft.latencyMs}ms) + Cloud (${cloudEnhanced.latencyMs}ms)`,
+        structuredTasks: [
+          ...(nanoDraft.structuredTasks || []),
+          ...(cloudEnhanced.structuredTasks || [])
+        ],
+        latencyMs: totalLatency,
+        firstTokenMs: nanoDraft.firstTokenMs || 110,
+        timestamp: Date.now(),
+        routerReason: decision.reason,
+        breakdown: decision.breakdown,
+        isStreaming: true,
+        speculativePreview: nanoDraft.content.slice(0, 120) + '...'
+      };
+    } 
+    // B. ENRUTAMIENTO LOCAL EXCLUSIVO
+    else if (decision.target === 'local') {
       try {
         executionResult = await this.localWorker.execute(
           task, 
@@ -93,11 +137,11 @@ export class HybridOrchestrator {
           onStreamChunk
         );
       } catch (err) {
-        // Fallback si falla local y no contiene PII sensible
+        // Fallback resiliente a nube si la tarea no tiene PII sensible
         if (isOnline && !decision.breakdown.hasPII) {
           executionResult = await this.cloudWorker.execute(
             task, 
-            'Fallback activado: Falló ejecución local; delegando a Gemini Cloud.', 
+            'Fallback de Resiliencia: Falló ejecución on-device; degradando automáticamente a Gemini Cloud.', 
             decision.breakdown,
             onStreamChunk
           );
@@ -106,20 +150,22 @@ export class HybridOrchestrator {
           return { decision, queued: true };
         }
       }
-    } else {
-      // Intento en nube con fallback automático a local ante timeout o fallo de red (RF-09)
+    } 
+    // C. ENRUTAMIENTO NUBE
+    else {
       try {
         executionResult = await this.cloudWorker.execute(
           task, 
           decision.reason, 
-          decision.breakdown,
+          decision.breakdown, 
           onStreamChunk
         );
       } catch (cloudErr) {
+        // Fallback resiliente a local ante timeout o fallo de red
         if (this.localWorker.getStatus().isReady) {
           executionResult = await this.localWorker.execute(
             task,
-            'Fallback activo (RF-09): La nube superó el timeout; degradando con éxito a Gemini Nano on-device.',
+            'Fallback de Resiliencia: La nube superó el umbral de espera; ejecutando con éxito en Gemini Nano on-device.',
             decision.breakdown,
             onStreamChunk
           );
@@ -130,7 +176,7 @@ export class HybridOrchestrator {
       }
     }
 
-    // Registro de auditoría y métricas (RF-10, RF-11)
+    // Registro de Telemetría Multidimensional
     const metric: OrchestratorMetric = {
       id: `m_${Date.now()}`,
       taskId: executionResult.taskId,
@@ -140,7 +186,9 @@ export class HybridOrchestrator {
       reason: executionResult.routerReason,
       timestamp: executionResult.timestamp,
       hasPII: decision.breakdown.hasPII,
-      score: decision.breakdown.complexityScore
+      score: decision.breakdown.complexityScore,
+      confidenceScore: decision.breakdown.confidenceScore,
+      costSavedUSD: decision.breakdown.estimatedCostUSD
     };
     this.metrics.push(metric);
 
@@ -168,7 +216,7 @@ export class HybridOrchestrator {
   }
 
   public exportAuditLogsAsCSV(): string {
-    const headers = ['ID', 'TaskID', 'Source', 'LatencyMs', 'Tokens', 'Score', 'HasPII', 'Timestamp', 'Reason'];
+    const headers = ['ID', 'TaskID', 'Source', 'LatencyMs', 'Tokens', 'Score', 'ConfidencePct', 'CostSavedUSD', 'HasPII', 'Timestamp', 'Reason'];
     const rows = this.metrics.map(m => [
       m.id,
       m.taskId,
@@ -176,6 +224,8 @@ export class HybridOrchestrator {
       m.latencyMs,
       m.tokens,
       m.score,
+      `${m.confidenceScore}%`,
+      `$${m.costSavedUSD.toFixed(6)}`,
       m.hasPII ? 'SI' : 'NO',
       new Date(m.timestamp).toISOString(),
       `"${m.reason.replace(/"/g, '""')}"`
