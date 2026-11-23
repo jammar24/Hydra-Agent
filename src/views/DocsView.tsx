@@ -1,7 +1,14 @@
 import React from 'react';
-import { BookOpen, Layers, ShieldCheck, Terminal, Cpu, Cloud, CheckCircle2, Sparkles, Key, Zap, Database } from 'lucide-react';
+import { BookOpen, Layers, ShieldCheck, Terminal, Cpu, Cloud, CheckCircle2, Sparkles, Key, Zap, RefreshCw } from 'lucide-react';
+import { Language, translations } from '../i18n';
 
-export const DocsView: React.FC = () => {
+interface DocsViewProps {
+  lang: Language;
+}
+
+export const DocsView: React.FC<DocsViewProps> = ({ lang }) => {
+  const t = translations[lang];
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', padding: '10px 0 60px' }}>
       
@@ -11,29 +18,64 @@ export const DocsView: React.FC = () => {
           <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(56, 189, 248, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <BookOpen size={22} color="var(--accent-cyan)" />
           </div>
-          <h1 style={{ fontSize: '24px', fontWeight: '800' }}>Documentación Técnica del Sistema</h1>
+          <h1 style={{ fontSize: '24px', fontWeight: '800' }}>{t.docs_header_title}</h1>
         </div>
         <p style={{ color: 'var(--text-muted)', fontSize: '15px', lineHeight: '1.6' }}>
-          Especificación detallada de la arquitectura de enrutamiento híbrido, capacidades de ingeniería, modelo de seguridad Zero-Trust y estrategia de fallback de alta disponibilidad.
+          {t.docs_header_desc}
         </p>
       </div>
 
       {/* 1. Arquitectura y Enrutador */}
       <section className="glass-panel" style={{ padding: '32px' }}>
         <h2 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Layers size={20} color="var(--primary-glow)" /> 1. Arquitectura del Orquestador Desacoplado
+          <Layers size={20} color="var(--primary-glow)" /> {t.docs_sec1_title}
         </h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.7', marginBottom: '18px' }}>
-          El núcleo de <strong>HybridAgent</strong> reside en <code>src/orchestrator/</code>. A diferencia de las soluciones monolíticas tradicionales, las decisiones de cómputo están estrictamente desacopladas de la capa de ejecución (Workers) y del estado (Firestore).
+          {t.docs_sec1_desc}
         </p>
 
-        <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '20px', marginBottom: '10px' }}>
-          <h4 style={{ fontSize: '14px', color: 'var(--text-main)', marginBottom: '10px' }}>Reglas de Evaluación Semántica:</h4>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+          <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <Cpu size={16} color="var(--accent-cyan)" />
+              <strong style={{ fontSize: '13px', color: 'var(--text-main)' }}>{t.docs_head1_name}</strong>
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5' }}>{t.docs_head1_desc}</p>
+          </div>
+
+          <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <Cloud size={16} color="var(--primary-glow)" />
+              <strong style={{ fontSize: '13px', color: 'var(--text-main)' }}>{t.docs_head2_name}</strong>
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5' }}>{t.docs_head2_desc}</p>
+          </div>
+
+          <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <ShieldCheck size={16} color="var(--accent-rose)" />
+              <strong style={{ fontSize: '13px', color: 'var(--text-main)' }}>{t.docs_head3_name}</strong>
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5' }}>{t.docs_head3_desc}</p>
+          </div>
+
+          <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <RefreshCw size={16} color="var(--accent-emerald)" />
+              <strong style={{ fontSize: '13px', color: 'var(--text-main)' }}>{t.docs_head4_name}</strong>
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5' }}>{t.docs_head4_desc}</p>
+          </div>
+        </div>
+
+        <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '20px' }}>
+          <h4 style={{ fontSize: '14px', color: 'var(--text-main)', marginBottom: '10px' }}>{t.docs_rules_title}</h4>
           <ul style={{ paddingLeft: '20px', color: 'var(--text-muted)', fontSize: '13px', lineHeight: '1.8' }}>
-            <li><strong>Estimación de Tokens:</strong> Longitud de caracteres / 3.8 con normalización de espacios.</li>
-            <li><strong>Clasificador de Intención:</strong> Identifica si el prompt solicita código, razonamiento matemático, resúmenes o extracción de tareas estructuradas.</li>
-            <li><strong>Umbral de Complejidad:</strong> Puntuación calculada de 0 a 100. Tareas con score &lt; 50 se dirigen a Gemini Nano.</li>
-            <li><strong>Límite de Contexto On-Device:</strong> Límite de 9.216 tokens para inferencia local; todo volumen superior escala a la nube.</li>
+            <li>{t.docs_rule_1}</li>
+            <li>{t.docs_rule_2}</li>
+            <li>{t.docs_rule_3}</li>
+            <li>{t.docs_rule_4}</li>
+            <li>{t.docs_rule_5}</li>
           </ul>
         </div>
       </section>
@@ -41,24 +83,24 @@ export const DocsView: React.FC = () => {
       {/* 2. Escudo de Privacidad Zero-Trust */}
       <section className="glass-panel" style={{ padding: '32px' }}>
         <h2 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <ShieldCheck size={20} color="var(--accent-rose)" /> 2. Escudo de Privacidad Zero-Trust (PII Redaction)
+          <ShieldCheck size={20} color="var(--accent-rose)" /> {t.docs_sec2_title}
         </h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.7', marginBottom: '18px' }}>
-          Protección estricta de la información personal identificable (PII). El evaluador escanea expresiones regulares de alta precisión antes de despachar cualquier tarea para garantizar confidencialidad de grado empresarial:
+          {t.docs_sec2_desc}
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
           <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
-            <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--accent-rose)' }}>Correos Electrónicos</span>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>Enmascarados en logs como <code>[EMAIL_PROTEGIDO]</code>. Bloquea el envío a servidores de nube.</p>
+            <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--accent-rose)' }}>{t.docs_pii_email_title}</span>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>{t.docs_pii_email_desc}</p>
           </div>
           <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
-            <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--accent-rose)' }}>API Keys y Tokens</span>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>Detecta prefijos <code>sk-proj-</code>, <code>AIza</code>, <code>Bearer</code> y sustituye por <code>[API_KEY_CONFIDENCIAL]</code>.</p>
+            <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--accent-rose)' }}>{t.docs_pii_key_title}</span>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>{t.docs_pii_key_desc}</p>
           </div>
           <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
-            <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--accent-rose)' }}>Tarjetas y Credenciales</span>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>Enmascarado como <code>[TARJETA_PROTEGIDA]</code> y forzado a ejecución on-device.</p>
+            <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--accent-rose)' }}>{t.docs_pii_pass_title}</span>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>{t.docs_pii_pass_desc}</p>
           </div>
         </div>
       </section>
@@ -66,20 +108,56 @@ export const DocsView: React.FC = () => {
       {/* 3. Capacidades y Requisitos de Producción */}
       <section className="glass-panel" style={{ padding: '32px' }}>
         <h2 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <CheckCircle2 size={20} color="var(--accent-emerald)" /> 3. Capacidades y Especificaciones de Producción
+          <CheckCircle2 size={20} color="var(--accent-emerald)" /> {t.docs_sec3_title}
         </h2>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {[
-            { tag: 'Autenticación', text: 'Acceso seguro con Firebase Auth (Email/Contraseña y Sesión de Invitado)', status: 'Activo' },
-            { tag: 'Inferencia Local', text: 'Ejecución on-device en hardware del cliente con Gemini Nano vía window.ai', status: 'Activo' },
-            { tag: 'Inferencia Cloud', text: 'Procesamiento complejo en Gemini Cloud vía Firebase AI Logic con streaming', status: 'Activo' },
-            { tag: 'Resiliencia Offline', text: 'Operación continua sin red (Modo Avión) con almacenamiento seguro en IndexedDB', status: 'Activo' },
-            { tag: 'Sincronización', text: 'Drenado y reconciliación idempotente de tareas al reconectar a internet', status: 'Activo' },
-            { tag: 'Auditoría Zero-Trust', text: 'Trazabilidad en tiempo real con razones de enrutamiento y enmascaramiento PII', status: 'Activo' },
-            { tag: 'Exportación de Logs', text: 'Descarga de telemetría y auditoría técnica en formatos estándar JSON y CSV', status: 'Activo' },
-            { tag: 'Optimización de Costos', text: 'Reducción demostrada de más del 50% en llamadas y costos de infraestructura cloud', status: '> 50%' },
-            { tag: 'Seguridad App Check', text: 'Atestación criptográfica de integridad en peticiones salientes a Firebase', status: 'Activo' }
+            { 
+              tag: lang === 'es' ? 'Autenticación' : 'Authentication', 
+              text: lang === 'es' ? 'Acceso seguro con Firebase Auth (Email/Contraseña y Modo Invitado 1-clic)' : 'Secure access via Firebase Auth (Email/Password and 1-Click Guest Mode)', 
+              status: lang === 'es' ? 'Activo' : 'Active' 
+            },
+            { 
+              tag: lang === 'es' ? 'Inferencia Local' : 'Local Inference', 
+              text: lang === 'es' ? 'Ejecución on-device en hardware del cliente con Gemini Nano en Chrome Desktop' : 'On-device execution on client hardware using Gemini Nano in Chrome Desktop', 
+              status: lang === 'es' ? 'Activo' : 'Active' 
+            },
+            { 
+              tag: lang === 'es' ? 'Inferencia Cloud' : 'Cloud Inference', 
+              text: lang === 'es' ? 'Procesamiento complejo en Gemini Cloud vía Firebase AI Logic con streaming' : 'Complex processing on Gemini Cloud via Firebase AI Logic with token streaming', 
+              status: lang === 'es' ? 'Activo' : 'Active' 
+            },
+            { 
+              tag: lang === 'es' ? 'Resiliencia Offline' : 'Offline Resilience', 
+              text: lang === 'es' ? 'Sin red operan tareas simples; tareas complejas van a cola en IndexedDB' : 'Offline operation: simple tasks execute; complex tasks queue in IndexedDB', 
+              status: lang === 'es' ? 'Activo' : 'Active' 
+            },
+            { 
+              tag: lang === 'es' ? 'Sincronización' : 'Sync', 
+              text: lang === 'es' ? 'Drenado y reconciliación idempotente de tareas al reconectar a internet' : 'Idempotent queue drain and reconciliation upon network restoration', 
+              status: lang === 'es' ? 'Activo' : 'Active' 
+            },
+            { 
+              tag: lang === 'es' ? 'Auditoría' : 'Audit', 
+              text: lang === 'es' ? 'Trazabilidad en tiempo real con razones de enrutamiento y enmascaramiento PII' : 'Real-time traceability with routing explanation and PII masking', 
+              status: lang === 'es' ? 'Activo' : 'Active' 
+            },
+            { 
+              tag: lang === 'es' ? 'Exportación de Logs' : 'Log Export', 
+              text: lang === 'es' ? 'Descarga de telemetría y auditoría técnica en formatos estándar JSON y CSV' : 'Export telemetry and technical logs in standard JSON and CSV formats', 
+              status: lang === 'es' ? 'Activo' : 'Active' 
+            },
+            { 
+              tag: lang === 'es' ? 'Benchmark' : 'Benchmark', 
+              text: lang === 'es' ? 'Evaluación reproducible de cargas simples vs. complejas (meta ≥ 40% ahorro)' : 'Reproducible benchmark of simple vs. complex workloads (≥ 40% savings)', 
+              status: '≥ 40%' 
+            },
+            { 
+              tag: lang === 'es' ? 'Seguridad App Check' : 'App Check Security', 
+              text: lang === 'es' ? 'Atestación criptográfica de integridad en peticiones salientes a Firebase' : 'Cryptographic integrity attestation for outbound Firebase calls', 
+              status: lang === 'es' ? 'Activo' : 'Active' 
+            }
           ].map((r, idx) => (
             <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

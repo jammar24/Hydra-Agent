@@ -1,7 +1,13 @@
 import React from 'react';
 import { Code2, Terminal, Copy, Check, ExternalLink, Zap } from 'lucide-react';
+import { Language, translations } from '../i18n';
 
-export const ApiView: React.FC = () => {
+interface ApiViewProps {
+  lang: Language;
+}
+
+export const ApiView: React.FC<ApiViewProps> = ({ lang }) => {
+  const t = translations[lang];
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
 
   const copyCode = (id: string, code: string) => {
@@ -18,33 +24,33 @@ const orchestrator = new HybridOrchestrator({
   initialMode: 'auto' // 'auto' | 'cascade' | 'local_only' | 'cloud_only'
 });
 
-// Despachar tarea con evaluación en tiempo real (< 50ms)
+// Dispatch task with real-time semantic evaluation (< 50ms)
 const result = await orchestrator.dispatch(
-  "Analizar arquitectura del backlog y extraer tareas prioritarias",
+  "Analyze backlog architecture and extract priority tasks",
   navigator.onLine,
-  "user_jamar",
+  "user_123",
   (tokenChunk) => {
-    // Streaming de tokens en vivo (Nano o Cloud)
+    // Word-by-word streaming token callback
     process.stdout.write(tokenChunk);
   }
 );
 
-console.log("Ruta seleccionada:", result.decision.target); // 'local' | 'cloud' | 'cascade' | 'queue'
-console.log("Razón técnica explicable:", result.decision.reason);
-console.log("Score de complejidad:", result.decision.breakdown.complexityScore); // 0 - 100
-console.log("Certeza de enrutamiento:", result.decision.breakdown.confidenceScore + "%");
-console.log("Ahorro estimado en nube:", "$" + result.decision.breakdown.estimatedCostUSD);`;
+console.log("Selected route:", result.decision.target); // 'local' | 'cloud' | 'cascade' | 'queue'
+console.log("Technical rationale:", result.decision.reason);
+console.log("Complexity score:", result.decision.breakdown.complexityScore); // 0 - 100
+console.log("Confidence certainty:", result.decision.breakdown.confidenceScore + "%");
+console.log("Estimated cost saved:", "$" + result.decision.breakdown.estimatedCostUSD);`;
 
-  const windowAIExample = `// Detección e inicialización nativa de Gemini Nano en Chrome Desktop >= 139
+  const windowAIExample = `// Chrome Desktop Prompt API native initialization
 if (window.ai?.languageModel) {
   const capabilities = await window.ai.languageModel.capabilities();
   
   if (capabilities.available === 'readily') {
     const session = await window.ai.languageModel.create({
-      systemPrompt: "Eres Gemini Nano, un modelo on-device de alta velocidad."
+      systemPrompt: "You are Gemini Nano, a high-speed on-device model."
     });
 
-    const stream = session.promptStreaming("Extraer tareas estructuradas en JSON...");
+    const stream = session.promptStreaming("Extract structured tasks into JSON...");
     for await (const chunk of stream) {
       console.log(chunk);
     }
@@ -60,10 +66,10 @@ if (window.ai?.languageModel) {
           <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Code2 size={22} color="var(--primary-glow)" />
           </div>
-          <h1 style={{ fontSize: '24px', fontWeight: '800' }}>Referencia de API del Orquestador</h1>
+          <h1 style={{ fontSize: '24px', fontWeight: '800' }}>{t.api_header_title}</h1>
         </div>
         <p style={{ color: 'var(--text-muted)', fontSize: '15px', lineHeight: '1.6' }}>
-          Interfaces públicas, clases y métodos para integrar el enrutador híbrido de HybridAgent en cualquier aplicación Web o extensión de Chrome.
+          {t.api_header_desc}
         </p>
       </div>
 
@@ -79,16 +85,20 @@ if (window.ai?.languageModel) {
             style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             {copiedId === 'dispatch' ? <Check size={14} color="var(--accent-emerald)" /> : <Copy size={14} />}
-            {copiedId === 'dispatch' ? 'Copiado' : 'Copiar Código'}
+            {copiedId === 'dispatch' ? t.api_btn_copied : t.api_btn_copy}
           </button>
         </div>
 
-        <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.6', marginBottom: '16px' }}>
-          Evalúa la entrada contra las reglas de complejidad, PII y conectividad. Dirige automáticamente el flujo al <code>LocalWorker</code>, <code>CloudWorker</code>, modo de co-inferencia en <code>cascade</code> o a la cola offline de IndexedDB.
+        <p style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: '1.6', marginBottom: '16px' }}>
+          {t.api_method1_desc}
         </p>
 
-        <pre style={{ background: 'var(--code-bg)', border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '20px', overflowX: 'auto', fontSize: '13px', fontFamily: 'var(--font-mono)', color: 'var(--text-main)', lineHeight: '1.6' }}>
-          <code>{dispatchExample}</code>
+        <pre style={{
+          background: 'rgba(0, 0, 0, 0.4)', padding: '18px 22px', borderRadius: '10px',
+          border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: '12px',
+          color: 'var(--text-main)', lineHeight: '1.6', overflowX: 'auto'
+        }}>
+          {dispatchExample}
         </pre>
       </section>
 
@@ -96,24 +106,28 @@ if (window.ai?.languageModel) {
       <section className="glass-panel" style={{ padding: '32px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
           <h2 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ padding: '3px 8px', borderRadius: '4px', background: 'rgba(56, 189, 248, 0.15)', color: 'var(--accent-cyan)', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>CHROME API</span>
-            <code>window.ai.languageModel (Prompt API)</code>
+            <span style={{ padding: '3px 8px', borderRadius: '4px', background: 'rgba(56, 189, 248, 0.15)', color: 'var(--accent-cyan)', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>DEVICE API</span>
+            <code>window.ai.languageModel (Chrome Prompt API)</code>
           </h2>
           <button
             onClick={() => copyCode('windowai', windowAIExample)}
             style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             {copiedId === 'windowai' ? <Check size={14} color="var(--accent-emerald)" /> : <Copy size={14} />}
-            {copiedId === 'windowai' ? 'Copiado' : 'Copiar Código'}
+            {copiedId === 'windowai' ? t.api_btn_copied : t.api_btn_copy}
           </button>
         </div>
 
-        <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.6', marginBottom: '16px' }}>
-          Integración directa con el modelo Gemini Nano alojado en el hardware del dispositivo. No requiere conexión a internet y mantiene los datos privados en la memoria local.
+        <p style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: '1.6', marginBottom: '16px' }}>
+          {t.api_method2_desc}
         </p>
 
-        <pre style={{ background: 'var(--code-bg)', border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '20px', overflowX: 'auto', fontSize: '13px', fontFamily: 'var(--font-mono)', color: 'var(--text-main)', lineHeight: '1.6' }}>
-          <code>{windowAIExample}</code>
+        <pre style={{
+          background: 'rgba(0, 0, 0, 0.4)', padding: '18px 22px', borderRadius: '10px',
+          border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: '12px',
+          color: 'var(--text-main)', lineHeight: '1.6', overflowX: 'auto'
+        }}>
+          {windowAIExample}
         </pre>
       </section>
 

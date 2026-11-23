@@ -1,7 +1,7 @@
 {
-  "name": "hybridagent",
+  "name": "hydra-agent",
   "version": "1.0.0",
-  "description": "HybridAgent: Orquestador híbrido local/nube con sincronización en tiempo real para Firebase #BuildHybridAI 2026",
+  "description": "HYDRA Agent IA: Orquestador híbrido local/nube con sincronización en tiempo real para Firebase #BuildHybridAI 2026",
   "license": "Apache-2.0",
   "author": "Jamar Masias",
   "type": "module",

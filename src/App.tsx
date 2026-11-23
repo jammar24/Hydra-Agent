@@ -24,17 +24,17 @@ export const App: React.FC = () => {
   const [orchestrator] = useState(() => new HybridOrchestrator());
   const [currentRoute, setCurrentRoute] = useState<AppRoute>(getRouteFromHash());
   
-  // Soporte de Idioma y Tema Claro/Oscuro
+  // Language and theme
   const [lang, setLang] = useState<Language>('es');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const t = translations[lang];
 
-  // Estado de Autenticación (Requerido para el Dashboard)
+  // Authentication state
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isAnonLoading, setIsAnonLoading] = useState(false);
 
-  // Estados del Dashboard de Inferencia
+  // Inference dashboard state
   const [prompt, setPrompt] = useState('');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isLocalReady, setIsLocalReady] = useState(false);
@@ -46,22 +46,23 @@ export const App: React.FC = () => {
   const [metrics, setMetrics] = useState<OrchestratorMetric[]>([]);
   const [queueCount, setQueueCount] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isBenchmarking, setIsBenchmarking] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const [activeDecision, setActiveDecision] = useState<RoutingDecision | null>(null);
 
-  // Aplicar tema en data-theme
+  // Sync theme
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // Suscripción al estado de autenticación real de Firebase
+  // Subscribe to auth state
   useEffect(() => {
     const unsubscribe = subscribeToAuthChanges((fbUser) => {
       if (fbUser) {
         setUser({
           uid: fbUser.uid,
           email: fbUser.email,
-          displayName: fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0] : (lang === 'es' ? 'Invitado Firebase' : 'Firebase Guest')),
+          displayName: fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0] : (lang === 'es' ? 'Invitado' : 'Guest User')),
           isAnonymous: fbUser.isAnonymous
         });
       }
@@ -69,7 +70,7 @@ export const App: React.FC = () => {
     return () => unsubscribe();
   }, [lang]);
 
-  // Sincronización con URL Hash
+  // Sync URL hash
   useEffect(() => {
     const handleHashChange = () => {
       setCurrentRoute(getRouteFromHash());
@@ -83,6 +84,8 @@ export const App: React.FC = () => {
     setRouteHash(route);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // Hardware check and network listeners
 
   useEffect(() => {
     orchestrator.getLocalWorker().checkNativeAvailability().then((available) => {
@@ -154,6 +157,41 @@ export const App: React.FC = () => {
     setIsProcessing(false);
   };
 
+  const handleRunBenchmark = async () => {
+    if (isBenchmarking || isProcessing) return;
+    setIsBenchmarking(true);
+
+    const benchmarkPrompts = [
+      'Reunión de sync: revisar tareas pendientes del sprint',
+      'Checklist de entrega para versión v1.0.0',
+      'Nota rápida: llamar al cliente sobre actualización de servicio',
+      'Resumir nota de standup matutino',
+      'Recordatorio: verificar logs del servidor a las 3pm',
+      'Anotar feedback de usuario sobre interfaz oscura',
+      'Lista de compras de oficina para el equipo',
+      'Extraer ítems de acción de la llamada con diseño',
+      'Actualizar documentación interna de bienvenida',
+      'Confirmar asistencia para el demo del hackathon',
+      'Análisis profundo y arquitectura de microservicios distribuida con alta concurrencia y sharding de base de datos',
+      'Diseño formal de protocolo de autenticación federada con tokens JWT asimétricos y validación App Check',
+      'Comparativa técnica exhaustiva entre arquitecturas monolíticas y serverless con estimación de costos',
+      'Algoritmo matemático de balanceo dinámico de carga con ventana deslizante y SLA estricto',
+      'Refactorización integral de capa de persistencia offline con reconciliación de conflictos en Firestore'
+    ];
+
+    for (const p of benchmarkPrompts) {
+      const outcome = await orchestrator.dispatch(p, isOnline, user ? user.uid : 'benchmark_user');
+      if (outcome.result) {
+        setHistory((prev) => [outcome.result!, ...prev]);
+      }
+      setMetrics(orchestrator.getMetrics());
+      setQueueCount(orchestrator.getQueueLength());
+      await new Promise((r) => setTimeout(r, 60));
+    }
+
+    setIsBenchmarking(false);
+  };
+
   const handleLogout = async () => {
     await logoutUser();
     setUser(null);
@@ -216,18 +254,20 @@ export const App: React.FC = () => {
         {/* Brand */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => navigateTo('home')}>
           <div style={{ 
-            width: '38px', height: '38px', borderRadius: '10px', 
+            width: '40px', height: '40px', borderRadius: '10px', 
             background: 'linear-gradient(135deg, var(--primary-accent), #4f46e5)', 
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 4px 14px -2px rgba(99, 102, 241, 0.35)'
           }}>
-            <Compass size={20} color="#ffffff" />
+            <Compass size={22} color="#ffffff" />
           </div>
           <div>
-            <div style={{ fontSize: '17px', fontWeight: '800', letterSpacing: '-0.02em', color: 'var(--text-main)' }}>
-              HYBRIDAGENT
+            <div style={{ fontSize: '19px', fontWeight: '900', letterSpacing: '0.14em', color: 'var(--text-main)', lineHeight: '1.1' }}>
+              HYDRA
             </div>
-            <div style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: '500' }}>Firebase #BuildHybridAI 2026</div>
+            <div style={{ fontSize: '10.5px', fontWeight: '700', letterSpacing: '0.22em', color: 'var(--text-dim)' }}>
+              {lang === 'es' ? 'AGENT IA' : 'AGENT AI'}
+            </div>
           </div>
         </div>
 
@@ -334,11 +374,11 @@ export const App: React.FC = () => {
         />
       )}
 
-      {currentRoute === 'docs' && <DocsView />}
+      {currentRoute === 'docs' && <DocsView lang={lang} />}
 
-      {currentRoute === 'api' && <ApiView />}
+      {currentRoute === 'api' && <ApiView lang={lang} />}
 
-      {currentRoute === 'security' && <SecurityView />}
+      {currentRoute === 'security' && <SecurityView lang={lang} />}
 
       {currentRoute === 'dashboard' && (
         <>
@@ -358,12 +398,10 @@ export const App: React.FC = () => {
 
               <div>
                 <h2 style={{ fontSize: '22px', fontWeight: '800', color: 'var(--text-main)', marginBottom: '8px' }}>
-                  {lang === 'es' ? 'Autenticación Requerida' : 'Authentication Required'}
+                  {t.auth_gate_title}
                 </h2>
                 <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.6' }}>
-                  {lang === 'es' 
-                    ? 'Para acceder a la consola de inferencia, interactuar con Gemini Nano en tiempo real y auditar las decisiones del orquestador, debes iniciar sesión con Firebase.'
-                    : 'To access the real-time inference console, interact with on-device Gemini Nano, and audit routing telemetry, please sign in with Firebase.'}
+                  {t.auth_gate_desc}
                 </p>
               </div>
 
@@ -580,10 +618,29 @@ export const App: React.FC = () => {
               {/* Consola de Envío con Orquestación Avanzada */}
               <section className="glass-panel" style={{ padding: '24px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
-                  <h2 style={{ fontSize: '16px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Terminal size={17} color="var(--primary-glow)" />
-                    {t.console_title}
-                  </h2>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                    <h2 style={{ fontSize: '16px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Terminal size={17} color="var(--primary-glow)" />
+                      {t.console_title}
+                    </h2>
+                    
+                    {/* Botón de Benchmark Reproducible (M-07) */}
+                    <button
+                      onClick={handleRunBenchmark}
+                      disabled={isBenchmarking || isProcessing}
+                      style={{
+                        padding: '6px 14px', borderRadius: '8px', fontSize: '11px', fontWeight: '700',
+                        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(56, 189, 248, 0.2))',
+                        color: 'var(--primary-glow)', border: '1px solid rgba(99, 102, 241, 0.35)',
+                        cursor: isBenchmarking ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
+                        transition: 'all 0.2s'
+                      }}
+                      title="Evalúa 15 cargas representativas (10 simples + 5 complejas) para calcular métricas auditables reales"
+                    >
+                      <Sparkles size={12} color="var(--accent-cyan)" />
+                      {isBenchmarking ? t.btn_running_benchmark : t.btn_run_benchmark}
+                    </button>
+                  </div>
                   
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-dim)' }}>{t.demo_prompts_label}</span>
@@ -597,6 +654,18 @@ export const App: React.FC = () => {
                       }}
                     >
                       <Cpu size={12} /> {t.btn_demo_simple}
+                    </button>
+
+                    <button
+                      onClick={() => handleSend(undefined, lang === 'es' ? 'Pega de nota: "Revisar arquitectura de login, depurar token de App Check y exportar reporte" -> generar resumen y tareas en JSON' : 'Note paste: "Review login architecture, debug App Check token, and export report" -> generate summary and JSON tasks')}
+                      style={{ 
+                        fontSize: '11px', fontWeight: '600', padding: '6px 12px', borderRadius: '8px',
+                        background: 'rgba(56, 189, 248, 0.1)', color: 'var(--accent-cyan)', border: '1px solid rgba(56, 189, 248, 0.25)',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px'
+                      }}
+                      title="Pega una nota -> Resumen + Tareas estructuradas en JSON"
+                    >
+                      <FileSpreadsheet size={12} /> {t.btn_demo_json_tasks}
                     </button>
 
                     <button
@@ -704,7 +773,7 @@ export const App: React.FC = () => {
                     {/* Barra de Complejidad Semántica */}
                     <div style={{ marginBottom: '14px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '5px' }}>
-                        <span>Complejidad Semántica (Score de Inferencia)</span>
+                        <span>{t.semantic_complexity_label}</span>
                         <strong style={{ color: activeDecision.breakdown.complexityScore >= 50 ? 'var(--primary-glow)' : 'var(--accent-emerald)' }}>
                           {activeDecision.breakdown.complexityScore} / 100
                         </strong>
@@ -962,7 +1031,7 @@ export const App: React.FC = () => {
       />
 
       {/* ─── FOOTER MODERNO COMPLETO ─── */}
-      <Footer onNavigate={(tab) => navigateTo(tab)} />
+      <Footer onNavigate={(tab) => navigateTo(tab)} lang={lang} />
 
     </div>
   );

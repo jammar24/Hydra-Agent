@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
-  Compass, ArrowRight, ShieldCheck, Cpu, Cloud, Zap, 
-  Sparkles, BookOpen, Code2 
+  ArrowRight, ShieldCheck, Cpu, Cloud, Zap, 
+  Sparkles, BookOpen, Code2, RefreshCw, Key, Layers
 } from 'lucide-react';
 import { Language, translations } from '../i18n';
 
@@ -31,21 +31,31 @@ export const HomeView: React.FC<HomeViewProps> = ({ onGoToDashboard, onGoToDocs,
           <Sparkles size={14} /> {t.hero_badge}
         </div>
 
+        <div style={{ marginBottom: '14px' }}>
+          <span style={{ 
+            fontSize: '14px', fontWeight: '700', letterSpacing: '0.24em', color: 'var(--accent-cyan)', textTransform: 'uppercase' 
+          }}>
+            {t.brand_tagline}
+          </span>
+        </div>
+
         <h1 style={{ 
-          fontSize: 'clamp(2.3rem, 5vw, 3.8rem)', fontWeight: '900', lineHeight: '1.15',
+          fontSize: 'clamp(2.4rem, 5.5vw, 4rem)', fontWeight: '900', lineHeight: '1.15',
           letterSpacing: '-0.03em', marginBottom: '20px',
           color: 'var(--text-main)'
         }}>
           {t.hero_title_1}<br />
           <span style={{ 
-            background: 'linear-gradient(135deg, var(--primary-accent), var(--accent-cyan))',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
+            color: 'var(--primary-glow)',
+            background: 'linear-gradient(135deg, #818cf8, #38bdf8)',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            display: 'inline-block'
           }}>
             {t.hero_title_2}
           </span>
         </h1>
 
-        <p style={{ maxWidth: '740px', margin: '0 auto 36px', fontSize: '16px', color: 'var(--text-muted)', lineHeight: '1.7' }}>
+        <p style={{ maxWidth: '760px', margin: '0 auto 36px', fontSize: '16px', color: 'var(--text-muted)', lineHeight: '1.7' }}>
           {t.hero_desc}
         </p>
 
@@ -86,56 +96,115 @@ export const HomeView: React.FC<HomeViewProps> = ({ onGoToDashboard, onGoToDocs,
         </div>
       </section>
 
-      {/* ─── LOS TRES PILARES ─── */}
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-        
-        <div className="glass-panel" style={{ padding: '30px 26px' }}>
-          <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '18px' }}>
-            <Cpu size={24} color="var(--accent-cyan)" />
-          </div>
-          <h3 style={{ fontSize: '17px', fontWeight: '700', marginBottom: '10px', color: 'var(--text-main)' }}>{t.pillar_local_title}</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.6' }}>
-            {t.pillar_local_desc}
+      {/* ─── LAS 4 CABEZAS DE HYDRA ─── */}
+      <section>
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <h2 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-main)' }}>
+            {t.heads_section_title}
+          </h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>
+            {t.heads_section_sub}
           </p>
         </div>
 
-        <div className="glass-panel" style={{ padding: '30px 26px' }}>
-          <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: 'rgba(244, 63, 94, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '18px' }}>
-            <ShieldCheck size={24} color="var(--accent-rose)" />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+          
+          {/* Cabeza 1: Local */}
+          <div className="glass-panel" style={{ padding: '28px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Cpu size={22} color="var(--accent-cyan)" />
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: '700', padding: '3px 8px', borderRadius: '20px', background: 'rgba(56, 189, 248, 0.15)', color: 'var(--accent-cyan)' }}>
+                HEAD 01
+              </span>
+            </div>
+            <h3 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '10px', color: 'var(--text-main)' }}>
+              {t.head_1_title}
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: '1.6' }}>
+              {t.head_1_desc}
+            </p>
           </div>
-          <h3 style={{ fontSize: '17px', fontWeight: '700', marginBottom: '10px', color: 'var(--text-main)' }}>{t.pillar_privacy_title}</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.6' }}>
-            {t.pillar_privacy_desc}
-          </p>
-        </div>
 
-        <div className="glass-panel" style={{ padding: '30px 26px' }}>
-          <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: 'rgba(99, 102, 241, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '18px' }}>
-            <Cloud size={24} color="var(--primary-glow)" />
+          {/* Cabeza 2: Cloud */}
+          <div className="glass-panel" style={{ padding: '28px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'rgba(99, 102, 241, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Cloud size={22} color="var(--primary-glow)" />
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: '700', padding: '3px 8px', borderRadius: '20px', background: 'rgba(99, 102, 241, 0.15)', color: 'var(--primary-glow)' }}>
+                HEAD 02
+              </span>
+            </div>
+            <h3 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '10px', color: 'var(--text-main)' }}>
+              {t.head_2_title}
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: '1.6' }}>
+              {t.head_2_desc}
+            </p>
           </div>
-          <h3 style={{ fontSize: '17px', fontWeight: '700', marginBottom: '10px', color: 'var(--text-main)' }}>{t.pillar_cloud_title}</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.6' }}>
-            {t.pillar_cloud_desc}
-          </p>
-        </div>
 
+          {/* Cabeza 3: Privacidad */}
+          <div className="glass-panel" style={{ padding: '28px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'rgba(244, 63, 94, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ShieldCheck size={22} color="var(--accent-rose)" />
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: '700', padding: '3px 8px', borderRadius: '20px', background: 'rgba(244, 63, 94, 0.15)', color: 'var(--accent-rose)' }}>
+                HEAD 03
+              </span>
+            </div>
+            <h3 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '10px', color: 'var(--text-main)' }}>
+              {t.head_3_title}
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: '1.6' }}>
+              {t.head_3_desc}
+            </p>
+          </div>
+
+          {/* Cabeza 4: Sincronización */}
+          <div className="glass-panel" style={{ padding: '28px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <RefreshCw size={22} color="var(--accent-emerald)" />
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: '700', padding: '3px 8px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.15)', color: 'var(--accent-emerald)' }}>
+                HEAD 04
+              </span>
+            </div>
+            <h3 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '10px', color: 'var(--text-main)' }}>
+              {t.head_4_title}
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: '1.6' }}>
+              {t.head_4_desc}
+            </p>
+          </div>
+
+        </div>
       </section>
 
-      {/* ─── BENCHMARK STRIP ─── */}
+      {/* ─── BENCHMARK STRIP MEDIDO ─── */}
       <section className="glass-panel" style={{ padding: '32px 40px', display: 'flex', justifyContent: 'space-around', alignItems: 'center', flexWrap: 'wrap', gap: '24px' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '38px', fontWeight: '900', color: 'var(--accent-emerald)' }}>&gt; 50%</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '2px' }}>{t.stat_savings_label}</div>
+          <div style={{ fontSize: '36px', fontWeight: '900', color: 'var(--accent-emerald)' }}>{t.stat_savings_val}</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '4px' }}>
+            {t.stat_savings_label}
+          </div>
         </div>
         <div style={{ width: '1px', height: '50px', background: 'var(--border-subtle)' }} />
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '38px', fontWeight: '900', color: 'var(--accent-cyan)' }}>&lt; 280ms</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '2px' }}>{t.stat_latency_label}</div>
+          <div style={{ fontSize: '36px', fontWeight: '900', color: 'var(--accent-cyan)' }}>{t.stat_latency_val}</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '4px' }}>
+            {t.stat_latency_label}
+          </div>
         </div>
         <div style={{ width: '1px', height: '50px', background: 'var(--border-subtle)' }} />
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '38px', fontWeight: '900', color: 'var(--primary-glow)' }}>100%</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '2px' }}>{t.stat_resilience_label}</div>
+          <div style={{ fontSize: '36px', fontWeight: '900', color: 'var(--primary-glow)' }}>{t.stat_resilience_val}</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '4px' }}>
+            {t.stat_resilience_label}
+          </div>
         </div>
       </section>
 

@@ -89,22 +89,22 @@ export class HybridOrchestrator {
 
     let executionResult: WorkerExecutionResult;
 
-    // A. ENRUTAMIENTO EN CASCADA ESPECULATIVA (Nano + Cloud Co-Inferencia)
+    // A. Cascade speculative routing (Nano + Cloud co-inference)
     if (decision.target === 'cascade') {
-      onStreamChunk?.('⚡ [Nano Especulativo < 180ms]: Generando pre-análisis estructurado en hardware local...\n');
+      onStreamChunk?.('⚡ [Nano Speculative < 180ms]: Generating on-device structured pre-analysis...\n');
       const startCascade = performance.now();
       
-      // 1. Ejecución preliminar ultrarrápida con Nano
+      // 1. Fast speculative local pass with Nano
       const nanoDraft = await this.localWorker.execute(
         task,
-        'Borrador Especulativo On-Device',
+        'On-Device Speculative Draft',
         decision.breakdown,
         (c) => onStreamChunk?.(c)
       );
 
-      onStreamChunk?.('\n\n☁️ [Firebase AI Logic]: Consolidando síntesis y razonamiento profundo...\n');
+      onStreamChunk?.('\n\n☁️ [Cloud Inference]: Consolidating deep reasoning context...\n');
 
-      // 2. Ejecución profunda en la nube
+      // 2. Deep cloud inference
       const cloudEnhanced = await this.cloudWorker.execute(
         task,
         decision.reason,
@@ -118,7 +118,7 @@ export class HybridOrchestrator {
         taskId: task.id,
         source: 'cascade',
         content: cloudEnhanced.content,
-        summary: `Co-Inferencia Híbrida: Nano (${nanoDraft.latencyMs}ms) + Cloud (${cloudEnhanced.latencyMs}ms)`,
+        summary: `Hybrid Co-Inference: Nano (${nanoDraft.latencyMs}ms) + Cloud (${cloudEnhanced.latencyMs}ms)`,
         structuredTasks: [
           ...(nanoDraft.structuredTasks || []),
           ...(cloudEnhanced.structuredTasks || [])
@@ -132,7 +132,7 @@ export class HybridOrchestrator {
         speculativePreview: nanoDraft.content.slice(0, 120) + '...'
       };
     } 
-    // B. ENRUTAMIENTO LOCAL EXCLUSIVO
+    // B. Direct local on-device routing
     else if (decision.target === 'local') {
       try {
         executionResult = await this.localWorker.execute(
@@ -142,11 +142,11 @@ export class HybridOrchestrator {
           onStreamChunk
         );
       } catch (err) {
-        // Fallback resiliente a nube si la tarea no tiene PII sensible
+        // Fallback to cloud if non-PII task fails locally
         if (isOnline && !decision.breakdown.hasPII) {
           executionResult = await this.cloudWorker.execute(
             task, 
-            'Fallback de Resiliencia: Falló ejecución on-device; degradando automáticamente a Gemini Cloud.', 
+            'Resilience Fallback: Local execution failed; escalated to Gemini Cloud.', 
             decision.breakdown,
             onStreamChunk
           );
@@ -156,7 +156,7 @@ export class HybridOrchestrator {
         }
       }
     } 
-    // C. ENRUTAMIENTO NUBE
+    // C. Cloud routing
     else {
       try {
         executionResult = await this.cloudWorker.execute(
@@ -166,11 +166,11 @@ export class HybridOrchestrator {
           onStreamChunk
         );
       } catch (cloudErr) {
-        // Fallback resiliente a local ante timeout o fallo de red
+        // Fallback to local model on cloud timeout or network error
         if (this.localWorker.getStatus().isReady) {
           executionResult = await this.localWorker.execute(
             task,
-            'Fallback de Resiliencia: La nube superó el umbral de espera; ejecutando con éxito en Gemini Nano on-device.',
+            'Resilience Fallback: Cloud timeout reached; executed locally with Gemini Nano.',
             decision.breakdown,
             onStreamChunk
           );
@@ -181,7 +181,7 @@ export class HybridOrchestrator {
       }
     }
 
-    // Registro de Telemetría Multidimensional
+    // Record multidimensional telemetry
     const metric: OrchestratorMetric = {
       id: `m_${Date.now()}`,
       taskId: executionResult.taskId,

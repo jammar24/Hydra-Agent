@@ -2,12 +2,12 @@ import { HybridOrchestrator } from '../src/orchestrator';
 import { RoutingEvaluator } from '../src/orchestrator/rules/evaluator';
 
 /**
- * Suite Integral de Pruebas Automatizadas (PT-01 a PT-10)
- * HybridAgent - Firebase #BuildHybridAI 2026
+ * Automated Test Suite (PT-01 to PT-10)
+ * HYDRA Agent AI - Hybrid Local & Cloud Orchestrator
  */
 async function runTests() {
   console.log('🧪 ========================================================');
-  console.log('   BANCO DE PRUEBAS AUTOMATIZADAS HYBRIDAGENT (PT-01 a PT-10)');
+  console.log('   HYDRA AGENT AI - AUTOMATED TEST BENCHMARK (PT-01 - PT-10)');
   console.log('========================================================\n');
   let passed = 0;
   let failed = 0;
@@ -28,100 +28,100 @@ async function runTests() {
     initialMode: 'auto'
   });
 
-  // Preparar modelo local para pruebas
+  // Prepare local worker for execution
   await orchestrator.getLocalWorker().initializeDeviceModel();
 
   // -------------------------------------------------------------
-  // PT-01: Tareas simples resueltas on-device con baja latencia
+  // PT-01: Simple on-device tasks resolved locally with SLA check
   // -------------------------------------------------------------
-  const res1 = await orchestrator.dispatch('Anotar reunión de equipo para mañana a las 10am', true);
-  assert(res1.decision.target === 'local', 'PT-01: Tarea simple enrutada a Gemini Nano on-device');
-  assert((res1.result?.latencyMs || 0) < 2000, 'PT-01b: Latencia on-device dentro del umbral de SLA');
+  const res1 = await orchestrator.dispatch('Quick team sync: review sprint tasks for tomorrow 10am', true);
+  assert(res1.decision.target === 'local', 'PT-01: Simple task routed to Gemini Nano on-device');
+  assert((res1.result?.latencyMs || 0) < 2000, 'PT-01b: On-device latency within expected SLA');
 
   // -------------------------------------------------------------
-  // PT-02: Tareas complejas enrutadas a Gemini Cloud
+  // PT-02: Complex tasks escalated to Gemini Cloud
   // -------------------------------------------------------------
   const res2 = await orchestrator.dispatch(
-    'Análisis profundo y arquitectura detallada para sistema de pagos distribuido de alta concurrencia y tolerancia a fallos',
+    'Deep analysis and detailed system architecture for high-concurrency distributed payment processing',
     true
   );
-  assert(res2.decision.target === 'cloud', 'PT-02: Tarea de alta complejidad delegada a Gemini Cloud');
-  assert(res2.decision.breakdown.complexityScore >= 50, 'PT-02b: Score de complejidad >= 50 puntos');
+  assert(res2.decision.target === 'cloud', 'PT-02: High-complexity workload routed to Gemini Cloud');
+  assert(res2.decision.breakdown.complexityScore >= 50, 'PT-02b: Complexity score threshold >= 50');
 
   // -------------------------------------------------------------
-  // PT-03: Modo sin conexión (Modo Avión)
+  // PT-03: Offline resilience mode (Airplane Mode)
   // -------------------------------------------------------------
   orchestrator.setMode('cloud_only');
-  const res3 = await orchestrator.dispatch('Generar reporte financiero completo anual consolidado', false);
-  assert(res3.decision.target === 'queue' && res3.queued === true, 'PT-03: Tarea cloud sin red es retenida en cola offline');
+  const res3 = await orchestrator.dispatch('Generate comprehensive annual financial report', false);
+  assert(res3.decision.target === 'queue' && res3.queued === true, 'PT-03: Cloud task offline is queued in storage');
 
   // -------------------------------------------------------------
-  // PT-04: Reconexión y vaciado de cola (drainQueue)
+  // PT-04: Reconnection and idempotent queue draining
   // -------------------------------------------------------------
   const drained = await orchestrator.drainQueue(true);
-  assert(drained.length === 1, 'PT-04: Tareas pendientes procesadas automáticamente al volver la red');
-  assert(orchestrator.getQueueLength() === 0, 'PT-04b: Cola vaciada tras drenaje idempotente');
+  assert(drained.length === 1, 'PT-04: Queued tasks automatically drained on network restore');
+  assert(orchestrator.getQueueLength() === 0, 'PT-04b: Queue empty after idempotent flush');
 
   // -------------------------------------------------------------
-  // PT-05: Trazabilidad y métricas de inferencia
+  // PT-05: Telemetry traceability and metrics
   // -------------------------------------------------------------
   const metrics = orchestrator.getMetrics();
-  assert(metrics.length >= 3, 'PT-05: Cada inferencia registra métrica con razón y latencia');
+  assert(metrics.length >= 3, 'PT-05: Every dispatch records audit telemetry with reason and latency');
 
   // -------------------------------------------------------------
-  // PT-06: Escudo Zero-Trust de Privacidad (Detección de PII)
+  // PT-06: Zero-Trust Privacy Shield (PII pattern detection)
   // -------------------------------------------------------------
   orchestrator.setMode('auto');
-  const piiPrompt = 'Guardar credenciales privadas: usuario juan@empresa.com con api_key: sk-proj-99482910 y clave: secret123';
+  const piiPrompt = 'Store private credentials: user john@company.com with api_key: sk-proj-99482910 and secret pass123';
   const resPII = await orchestrator.dispatch(piiPrompt, true);
-  assert(resPII.decision.target === 'local', 'PT-06: PII detectada fuerza enrutamiento 100% on-device');
-  assert(resPII.decision.breakdown.hasPII === true, 'PT-06b: Flag hasPII activado correctamente');
-  assert(resPII.decision.breakdown.detectedPIITypes.includes('Email'), 'PT-06c: Tipo de PII Email identificado');
-  assert(resPII.decision.breakdown.detectedPIITypes.some(t => t.includes('API Key')), 'PT-06d: Tipo de PII API Key identificado');
+  assert(resPII.decision.target === 'local', 'PT-06: Detected PII forces 100% on-device routing');
+  assert(resPII.decision.breakdown.hasPII === true, 'PT-06b: hasPII flag activated');
+  assert(resPII.decision.breakdown.detectedPIITypes.includes('Email'), 'PT-06c: Email PII type detected');
+  assert(resPII.decision.breakdown.detectedPIITypes.some(t => t.includes('API Key')), 'PT-06d: API Key PII type detected');
 
   // -------------------------------------------------------------
-  // PT-07: Enmascaramiento y Redacción segura de PII
+  // PT-07: In-memory PII masking and redaction
   // -------------------------------------------------------------
   const redacted = RoutingEvaluator.redactPII(piiPrompt);
-  assert(!redacted.includes('juan@empresa.com'), 'PT-07a: Correo electrónico redactado de forma segura');
-  assert(redacted.includes('[EMAIL_PROTEGIDO]'), 'PT-07b: Token [EMAIL_PROTEGIDO] insertado');
-  assert(!redacted.includes('sk-proj-99482910'), 'PT-07c: API key privada enmascarada');
+  assert(!redacted.includes('john@company.com'), 'PT-07a: Email address redacted in audit strings');
+  assert(redacted.includes('[EMAIL_PROTEGIDO]'), 'PT-07b: [EMAIL_PROTEGIDO] token inserted');
+  assert(!redacted.includes('sk-proj-99482910'), 'PT-07c: Private API key token masked');
 
   // -------------------------------------------------------------
-  // PT-08: Orquestación en Cascada Especulativa
+  // PT-08: Cascade speculative routing mode
   // -------------------------------------------------------------
   orchestrator.setMode('cascade');
   const resCascade = await orchestrator.dispatch(
-    'Diseñar arquitectura escalable en tiempo real con microfrontends',
+    'Design scalable real-time microfrontend system architecture',
     true
   );
-  assert(resCascade.decision.target === 'cascade', 'PT-08a: Modo cascada activado y respetado');
-  assert(resCascade.result?.source === 'cascade', 'PT-08b: Resultado consolidado como fuente cascade');
-  assert(!!resCascade.result?.speculativePreview, 'PT-08c: Preview especulativo de Nano generado');
+  assert(resCascade.decision.target === 'cascade', 'PT-08a: Cascade mode active and respected');
+  assert(resCascade.result?.source === 'cascade', 'PT-08b: Execution result identified as cascade source');
+  assert(!!resCascade.result?.speculativePreview, 'PT-08c: Nano speculative draft generated');
 
   // -------------------------------------------------------------
-  // PT-09: Vector de Decisión XAI Multidimensional
+  // PT-09: XAI multidimensional decision vector
   // -------------------------------------------------------------
-  assert(resCascade.decision.breakdown.confidenceScore >= 80, 'PT-09a: Score de confianza probabilística >= 80%');
-  assert(typeof resCascade.decision.breakdown.estimatedCostUSD === 'number', 'PT-09b: Estimación de costo computada en USD');
-  assert(resCascade.decision.evaluationMs < 50, 'PT-09c: Tiempo de evaluación del enrutador < 50ms');
+  assert(resCascade.decision.breakdown.confidenceScore >= 80, 'PT-09a: Confidence score >= 80%');
+  assert(typeof resCascade.decision.breakdown.estimatedCostUSD === 'number', 'PT-09b: Avoided cloud cost computed');
+  assert(resCascade.decision.evaluationMs < 50, 'PT-09c: Router decision evaluation time < 50ms');
 
   // -------------------------------------------------------------
-  // PT-10: Exportación de Auditoría en JSON y CSV
+  // PT-10: Audit logs export in JSON and CSV
   // -------------------------------------------------------------
   const jsonExport = orchestrator.exportAuditLogsAsJSON();
   const parsedJson = JSON.parse(jsonExport);
-  assert(Array.isArray(parsedJson) && parsedJson.length > 0, 'PT-10a: Exportación JSON válida y no vacía');
+  assert(Array.isArray(parsedJson) && parsedJson.length > 0, 'PT-10a: JSON export valid and non-empty');
   
   const csvExport = orchestrator.exportAuditLogsAsCSV();
-  assert(csvExport.includes('TaskID') && csvExport.includes('CostSavedUSD'), 'PT-10b: Cabeceras CSV correctas con telemetría de costo');
+  assert(csvExport.includes('TaskID') && csvExport.includes('CostSavedUSD'), 'PT-10b: CSV export headers correct');
 
   // -------------------------------------------------------------
-  // RESUMEN FINAL
+  // Summary
   // -------------------------------------------------------------
   console.log('\n========================================================');
-  console.log(`🎯 RESULTADOS FINALES: ${passed} pasadas, ${failed} fallidas`);
-  console.log(`ESTADO GENERAL: ${failed === 0 ? '🟢 TODAS LAS PRUEBAS PASARON - LISTO PARA PRODUCCIÓN' : '🔴 HAY PRUEBAS FALLIDAS'}`);
+  console.log(`🎯 FINAL RESULTS: ${passed} passed, ${failed} failed`);
+  console.log(`OVERALL STATUS: ${failed === 0 ? '🟢 ALL TESTS PASSED - PRODUCTION READY' : '🔴 TESTS FAILED'}`);
   console.log('========================================================\n');
 
   if (failed > 0) {
@@ -130,6 +130,6 @@ async function runTests() {
 }
 
 runTests().catch((err) => {
-  console.error('Error fatal durante la ejecución de pruebas:', err);
+  console.error('Fatal error during test run:', err);
   process.exit(1);
 });

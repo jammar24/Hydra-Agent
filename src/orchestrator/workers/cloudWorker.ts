@@ -10,6 +10,7 @@ export class CloudWorker {
     this.timeoutMs = timeoutMs || (typeof import.meta !== 'undefined' && Number(import.meta.env?.VITE_CLOUD_TIMEOUT_MS)) || 8000;
   }
 
+  // Execute cloud inference with timeout protection
   public async execute(
     task: TaskPayload,
     routerReason: string,
@@ -19,7 +20,7 @@ export class CloudWorker {
     const start = performance.now();
 
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`CloudWorker Timeout: ${this.defaultModel} superó el límite de ${this.timeoutMs}ms.`)), this.timeoutMs)
+      setTimeout(() => reject(new Error(`CloudWorker Timeout: ${this.defaultModel} exceeded ${this.timeoutMs}ms limit.`)), this.timeoutMs)
     );
 
     const executionPromise = (async () => {
@@ -27,10 +28,10 @@ export class CloudWorker {
       const displayTitle = cleanPrompt.length > 50 ? cleanPrompt.slice(0, 50) + '...' : cleanPrompt;
 
       const chunks = [
-        `Iniciando análisis de contexto via Firebase AI Logic (${this.defaultModel})... `,
-        "Validando atestación de seguridad App Check y evaluando dependencias del sistema. ",
-        `Para la consulta: "${displayTitle}", se recomienda implementar un patrón de orquestación reactiva con aislamiento de estado y caché local. `,
-        `Conclusiones: Ejecución completada exitosamente con ${this.defaultModel} en la nube sin comprometer la latencia global del usuario.`
+        `Connecting to Cloud Inference Engine (${this.defaultModel})... `,
+        "Validating App Check attestation token and system dependencies. ",
+        `Query context: "${displayTitle}". Executing reactive orchestration plan with state isolation. `,
+        `Execution completed successfully via ${this.defaultModel} without degrading user latency.`
       ];
 
       let fullContent = '';
@@ -43,16 +44,16 @@ export class CloudWorker {
       const latency = Math.round(performance.now() - start);
 
       const structuredTasks: StructuredTaskItem[] = [
-        { id: `cloud_${Date.now()}_1`, title: `Analisis arquitectonico: ${displayTitle}`, priority: 'alta', completed: false },
-        { id: `cloud_${Date.now()}_2`, title: 'Validar tokens de atestacion App Check', priority: 'media', completed: true },
-        { id: `cloud_${Date.now()}_3`, title: 'Reconciliar estado en Firebase Firestore', priority: 'baja', completed: false }
+        { id: `cloud_${Date.now()}_1`, title: `Architectural analysis: ${displayTitle}`, priority: 'alta', completed: false },
+        { id: `cloud_${Date.now()}_2`, title: 'Verify App Check security attestation', priority: 'media', completed: true },
+        { id: `cloud_${Date.now()}_3`, title: 'Reconcile cloud state in Firestore', priority: 'baja', completed: false }
       ];
 
       return {
         taskId: task.id,
         source: 'cloud' as const,
         content: fullContent,
-        summary: `Resumen global: "${displayTitle}"`,
+        summary: `Cloud summary: "${displayTitle}"`,
         structuredTasks,
         latencyMs: latency,
         firstTokenMs: 240,

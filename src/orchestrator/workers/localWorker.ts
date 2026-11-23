@@ -11,6 +11,7 @@ export class LocalWorker {
     this.checkNativeAvailability();
   }
 
+  // Check Chrome Desktop Prompt API availability
   public async checkNativeAvailability(): Promise<boolean> {
     if (typeof window !== 'undefined') {
       const win = window as any;
@@ -24,13 +25,14 @@ export class LocalWorker {
           }
           return this.isNativeWindowAIAvailable;
         } catch (e) {
-          console.warn('Prompt API (window.ai) no disponible directamente:', e);
+          console.warn('Prompt API (window.ai) not readily available:', e);
         }
       }
     }
     return false;
   }
 
+  // Get current local worker state
   public getStatus(): { isReady: boolean; progress: number; isNative: boolean } {
     return {
       isReady: this.isReady,
@@ -39,6 +41,7 @@ export class LocalWorker {
     };
   }
 
+  // Download and initialize local on-device model
   public async initializeDeviceModel(onProgress?: (pct: number) => void): Promise<boolean> {
     if (this.isReady && this.nativeSession) return true;
 
@@ -47,7 +50,7 @@ export class LocalWorker {
       if (win.ai && win.ai.languageModel) {
         try {
           this.nativeSession = await win.ai.languageModel.create({
-            systemPrompt: 'Eres Gemini Nano, un modelo on-device rapido, conciso y preciso. Responde en espanol con analisis estructurado.'
+            systemPrompt: 'You are Gemini Nano, a fast, concise on-device model. Respond with structured analysis.'
           });
           this.isReady = true;
           this.downloadPercentage = 100;
@@ -55,12 +58,12 @@ export class LocalWorker {
           onProgress?.(100);
           return true;
         } catch (err) {
-          console.warn('Fallo al inicializar window.ai real, usando runtime local de alta fidelidad:', err);
+          console.warn('Failed to initialize native window.ai; falling back to local runtime:', err);
         }
       }
     }
 
-    // Proceso de activacion/descarga del modelo local
+    // Local model simulated download progress
     for (let p = 15; p <= 100; p += 20) {
       await new Promise((r) => setTimeout(r, 70));
       this.downloadPercentage = Math.min(p, 100);
@@ -70,6 +73,7 @@ export class LocalWorker {
     return true;
   }
 
+  // Execute on-device inference
   public async execute(
     task: TaskPayload,
     routerReason: string,
@@ -77,14 +81,14 @@ export class LocalWorker {
     onToken?: (textChunk: string) => void
   ): Promise<WorkerExecutionResult> {
     if (!this.isReady) {
-      throw new Error('LocalWorker Error: Gemini Nano no ha sido inicializado en el dispositivo.');
+      throw new Error('LocalWorker Error: Gemini Nano is not initialized on device.');
     }
 
     const start = performance.now();
     let textOutput = '';
     let isRealHardware = false;
 
-    // A. Ejecucion Real con Prompt API si existe sesion nativa de Chrome
+    // A. Native Prompt API streaming execution
     if (this.nativeSession && typeof this.nativeSession.promptStreaming === 'function') {
       try {
         isRealHardware = true;
@@ -97,28 +101,28 @@ export class LocalWorker {
           onToken?.(newContent);
         }
       } catch (err) {
-        console.warn('Error en streaming nativo de window.ai:', err);
+        console.warn('Native window.ai streaming error:', err);
         textOutput = await this.nativeSession.prompt(task.prompt);
         onToken?.(textOutput);
       }
     } else {
-      // B. Runtime Local Inteligente con Streaming enmascarado
+      // B. High-fidelity local runtime execution
       const safePrompt = RoutingEvaluator.redactPII(task.prompt);
       await new Promise((r) => setTimeout(r, 140));
 
       let chunks: string[] = [];
       if (breakdown.hasPII) {
         chunks = [
-          "[Gemini Nano On-Device · Escudo de Privacidad Activo] ",
-          `Se detecto informacion sensible (${breakdown.detectedPIITypes.join(', ')}). `,
-          "La tarea fue aislada en la memoria local y se enmascararon credenciales para garantizar confidencialidad (Zero-Trust). ",
-          `Resumen seguro procesado: "${safePrompt.length > 70 ? safePrompt.slice(0, 70) + '...' : safePrompt}".`
+          "[Gemini Nano On-Device · Privacy Shield Active] ",
+          `Sensitive data detected (${breakdown.detectedPIITypes.join(', ')}). `,
+          "Task isolated in local memory with redacted credentials to ensure strict confidentiality. ",
+          `Processed secure summary: "${safePrompt.length > 70 ? safePrompt.slice(0, 70) + '...' : safePrompt}".`
         ];
       } else {
         chunks = [
           "[Gemini Nano On-Device] ",
-          `Procesando prompt en hardware local con Gemini Nano. `,
-          `Inferencia completada exitosamente sin consumo de red: "${safePrompt.length > 60 ? safePrompt.slice(0, 60) + '...' : safePrompt}".`
+          `Processing prompt on local device hardware with Gemini Nano. `,
+          `Inference completed successfully with 0 network tokens: "${safePrompt.length > 60 ? safePrompt.slice(0, 60) + '...' : safePrompt}".`
         ];
       }
 
@@ -134,15 +138,15 @@ export class LocalWorker {
     const displayTitle = cleanPrompt.length > 40 ? cleanPrompt.slice(0, 40) + '...' : cleanPrompt;
 
     const structuredTasks: StructuredTaskItem[] = [
-      { id: `nano_${Date.now()}_1`, title: `Revision local: ${displayTitle}`, priority: 'alta', completed: false },
-      { id: `nano_${Date.now()}_2`, title: 'Sincronizar memoria en Firestore IndexedDB', priority: 'media', completed: true }
+      { id: `nano_${Date.now()}_1`, title: `Local review: ${displayTitle}`, priority: 'alta', completed: false },
+      { id: `nano_${Date.now()}_2`, title: 'Sync state in local storage', priority: 'media', completed: true }
     ];
 
     return {
       taskId: task.id,
       source: 'local',
       content: textOutput,
-      summary: `Resumen local: "${displayTitle}"`,
+      summary: `Local summary: "${displayTitle}"`,
       structuredTasks,
       latencyMs: latency,
       firstTokenMs: isRealHardware ? 80 : 120,

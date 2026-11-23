@@ -1,114 +1,135 @@
-# 🧭 HybridAgent: Orquestador Híbrido Local/Nube con Sincronización en Tiempo Real
+# 🐉 HYDRA (Agent AI) — Hybrid AI Orchestration Engine
 
-> Proyecto presentado para el Hackathon **Google Firebase #BuildHybridAI 2026**  
-> **Candidatura Principal:** Premio *Best Web / Chrome App* ($3,000 USD)  
-> **Autor:** Jamar Masias  
-> **Licencia:** Apache-2.0 (Código Abierto)
-
----
-
-## 💡 1. Propuesta de Valor y Problema Resuelto
-
-Los agentes de IA actuales dependen de forma ciega de la nube:
-- ❌ **Costo por token desmedido:** Consultas simples y tareas repetitivas pagan tarifas completas de API.
-- ❌ **Alta Latencia:** Cada interacción sufre esperas de 1 a 3 segundos de red.
-- ❌ **Fallo Total sin Conexión:** Si el usuario entra en modo avión o tiene mala señal, el agente queda inservible.
-- ❌ **Riesgo de Privacidad:** Información sensible (correos, tokens, credenciales) viaja a servidores remotos.
-
-### 🌟 La Solución: HybridAgent
-**HybridAgent** es una arquitectura desacoplada que evalúa en tiempo real cada consulta mediante un evaluador semántico y de seguridad (RNF-02: < 50ms):
-1. **Gemini Nano (On-Device vía Prompt API de Chrome `window.ai`):** Ejecuta tareas simples, notas y resúmenes con latencia ultra baja (~260 ms) y **0 costo de tokens**.
-2. **Escudo de Privacidad Zero-Trust (PII Redaction):** Si se detectan credenciales o datos sensibles, el orquestador **bloquea la salida a la red** y fuerza el procesamiento on-device, enmascarando cualquier dato en los registros de auditoría (`[EMAIL_PROTEGIDO]`, `[API_KEY_CONFIDENCIAL]`).
-3. **Gemini Cloud (vía Firebase AI Logic con App Check):** Tareas complejas que requieren razonamiento profundo o gran contexto escalan automáticamente a la nube con streaming de respuesta palabra por palabra.
-4. **Resiliencia Offline y Cola Idempotente:** En modo avión, las tareas locales siguen respondiendo y las tareas de nube se encolan en **Firestore IndexedDB**, reconciliándose sin duplicados al reconectar.
+> **HYDRA Agent AI: Intelligent Hybrid Local & Cloud Inference Orchestrator**  
+> **Author:** Jamar Masias | **Production App:** [hydra-agent.vercel.app](https://hydra-agent.vercel.app/)  
+> **License:** Apache-2.0 (Open Source)  
+> **Tagline:** *"Many heads. One decision: where to think." / "Varias cabezas, una decisión: dónde pensar."*
 
 ---
 
-## 🏗️ 2. Diagrama de Arquitectura de Decisión
+## 💡 1. Overview & Problem Statement
+
+Modern AI agents often rely exclusively on remote cloud APIs:
+- ❌ **Unnecessary Token Costs:** Everyday queries and repetitive parsing incur full cloud billing.
+- ❌ **Network Latency:** Each simple request experiences 1–3 seconds of latency over the wire.
+- ❌ **Complete Offline Failure:** When connectivity is lost, the agent stops working entirely.
+- ❌ **Privacy Risks:** Sensitive data (passwords, tokens, credentials) travels to remote servers.
+
+### 🌟 The HYDRA Solution
+Inspired by the mythical creature of coordinated heads, **HYDRA** delegates computational workloads across **4 specialized heads**:
+
+1. **Head 1 — Local On-Device Inference (Gemini Nano):**  
+   Leverages device hardware via modern browser APIs (Chrome Desktop) for rapid summarization and structured JSON extraction with 0 network tokens.
+2. **Head 2 — Scalable Cloud Inference (Gemini Cloud via Firebase AI Logic):**  
+   Escalates complex, high-context reasoning tasks to the cloud with real-time token streaming verified by cryptographic attestation.
+3. **Head 3 — Zero-Trust Privacy Shield:**  
+   Scans prompts in memory for confidential patterns (emails, passwords, API keys `sk-`, credit cards). Automatically isolates tasks locally to prevent remote data leaks.
+4. **Head 4 — Offline Synchronization & Resilience:**  
+   Offline tasks execute immediately on-device; complex cloud queries queue safely in IndexedDB for idempotent reconciliation upon reconnection.
+
+---
+
+## 🏗️ 2. Architectural Decision Flow
 
 ```mermaid
 flowchart TD
-    User([Usuario / Prompt]) --> UI[Dashboard React + Glassmorphism]
-    UI --> Router[RoutingEvaluator: Análisis de Tokens y PII]
+    User([User Prompt / Structured Note]) --> UI[HYDRA Dashboard]
+    UI --> Evaluator[RoutingEvaluator: Token, Intent & PII Analysis]
     
-    Router -->|¿Contiene Datos Sensibles PII?| PII{Escudo Zero-Trust}
-    PII -->|SÍ: Forzar On-Device| NanoLocal[Worker Local: Gemini Nano / window.ai]
+    Evaluator -->|Sensitive PII Detected?| PII{Head 3: Privacy Shield}
+    PII -->|YES: Force Local| Head1[Head 1: Gemini Nano On-Device]
     
-    PII -->|NO| Complexity{Score de Complejidad}
-    Complexity -->|Score < 50: Simple| NanoLocal
-    Complexity -->|Score >= 50: Complejo| NetCheck{¿Hay Conexión de Red?}
+    PII -->|NO| Complexity{Complexity Score Threshold}
+    Complexity -->|Score < 50: Simple| Head1
+    Complexity -->|Score >= 50: Complex| NetCheck{Active Network?}
     
-    NetCheck -->|SÍ: Online| CloudWorker[Worker Cloud: Firebase AI Logic + App Check]
-    NetCheck -->|NO: Modo Avión| NanoFallback{¿Gemini Nano Disponible?}
+    NetCheck -->|YES: Online| Head2[Head 2: Cloud Inference Engine]
+    NetCheck -->|NO: Airplane Mode| OfflineQueue[(Head 4: Offline Storage Queue)]
     
-    NanoFallback -->|SÍ| NanoLocal
-    NanoFallback -->|NO| OfflineQueue[(Cola Offline: Firestore IndexedDB)]
+    Head2 -->|Timeout > 8s / Network Error| FallbackLocal[Resilient Degrade to Local Nano]
     
-    CloudWorker -->|Timeout > 8s / Error| FallbackLocal[Fallback Automático a Nano]
-    
-    NanoLocal --> Audit[Registro de Auditoría Enmascarado + Dashboard en Vivo]
-    CloudWorker --> Audit
-    OfflineQueue -->|Reconexión| Drain[Drenado Idempotente de Cola] --> Audit
+    Head1 --> Audit[Audit Log & Redacted Telemetry]
+    Head2 --> Audit
+    OfflineQueue -->|Network Restored| Drain[Idempotent Queue Drain] --> Audit
 ```
 
 ---
 
-## 📋 3. Matriz de Requisitos Oficiales Cumplidos
+## 🧪 3. Automated Test Suite (23/23 Passing)
 
-| Requisito | Descripción | Implementación Técnica en Código |
-|---|---|---|
-| **RF-03 / RF-04** | Clasificación y ejecución de tareas simples on-device | `src/orchestrator/rules/evaluator.ts` + `localWorker.ts` |
-| **RF-05** | Tareas complejas a Gemini Cloud vía Firebase AI Logic | `src/orchestrator/workers/cloudWorker.ts` |
-| **RF-06 / RF-07** | Memoria en Firestore y operación continua sin internet | `src/firebase.ts` (IndexedDB) + `offlineQueue` |
-| **RF-08** | Drenado de cola idempotente sin duplicados al reconectar | `orchestrator.drainQueue()` en `src/orchestrator/index.ts` |
-| **RF-09** | Fallback automático (nube → local) ante timeout | Timeout de 8s en `cloudWorker.ts` con degradación suave |
-| **RF-10 / RF-15** | Registro de auditoría explicable en tiempo real | Panel de decisión con desglose de tokens, PII e intención |
-| **RF-13** | Exportación de logs de sesión para auditoría técnica | Exportación descargable en formatos **JSON y CSV** |
-| **RF-14** | Toda la IA pasa por Firebase AI Logic / Gemini Nano | Sin librerías externas de terceros fuera del SDK |
-| **RF-17** | Salida JSON estructurada validada | Extracción de tareas prioritarias en `WorkerExecutionResult` |
-| **RNF-06** | Reducción ≥ 40% de llamadas a la nube | **Benchmark en vivo con 50% - 65% de ahorro demostrado** |
-| **RNF-10** | App Check activo y variables de entorno protegidas | `.env.example` y tokens de depuración configurados |
-| **RNF-11** | Repositorio público open source detectable | Archivo `LICENSE` Apache-2.0 en la raíz del proyecto |
+The project includes a comprehensive test suite covering all routing, privacy, and fallback behaviors:
+
+```bash
+# Run test suite
+npm test
+```
+
+### Coverage:
+- **PT-01 / PT-01b:** Simple on-device task routing and latency SLA verification.
+- **PT-02 / PT-02b:** Complex task escalation to Gemini Cloud with complexity threshold ≥ 50.
+- **PT-03:** Offline resilience mode and queue storage.
+- **PT-04 / PT-04b:** Reconnection and idempotent queue draining.
+- **PT-05:** Telemetry tracking, latency recording, and cost calculation.
+- **PT-06 (a-d):** Zero-Trust privacy shield (emails, API keys, credentials).
+- **PT-07 (a-c):** In-memory PII masking (`[EMAIL_PROTEGIDO]`, `[API_KEY_CONFIDENCIAL]`).
+- **PT-08 (a-c):** Cascade speculative mode (Nano draft + Cloud synthesis).
+- **PT-09 (a-c):** XAI multidimensional decision vector (< 50ms evaluation).
+- **PT-10 (a-b):** Audit log export integrity in standard JSON and CSV formats.
 
 ---
 
-## 🚀 4. Guía de Instalación y Ejecución Local
+## 🚀 4. Local Quick Start
 
-### Prerrequisitos
-- Node.js 18 o superior
-- Google Chrome de escritorio (recomendado versión 139+ con flags de `window.ai` activados en `chrome://flags`)
+### Prerequisites
+- Node.js 18 or higher
+- Modern Chromium browser (Chrome 139+ recommended for Prompt API)
 
-### Comandos de Inicio
+### Setup & Run
 ```bash
-# Clonar el repositorio
-git clone https://github.com/tu-usuario/hybridagent.git
-cd hybridagent
+# 1. Clone the repository
+git clone https://github.com/your-username/hydra-agent.git
+cd hydra-agent
 
-# Instalar dependencias
+# 2. Install dependencies
 npm install
 
-# Iniciar servidor de desarrollo en Vite
+# 3. Environment configuration
+cp .env.example .env.local
+
+# 4. Run test suite
+npm test
+
+# 5. Start development server
 npm run dev
 ```
 
-La aplicación estará corriendo en `http://localhost:5173`.
+Application will be available at `http://localhost:5173`.
 
 ---
 
-## ☁️ 5. Despliegue en Firebase Hosting (HTTPS)
+## 🌐 5. Production Deployment
 
-Para compilar y desplegar a producción:
+Pre-configured for static hosting platforms like Vercel:
+
 ```bash
-# Compilar la aplicación optimizada
+# Production build
 npm run build
 
-# Desplegar en Firebase Hosting
-firebase deploy --only hosting
+# Deploy to Vercel
+vercel --prod
 ```
+
+Live Production Application: [https://hydra-agent.vercel.app/](https://hydra-agent.vercel.app/)
 
 ---
 
-## 🛡️ 6. Seguridad y Buenas Prácticas (Zero-Trust)
-- Ninguna clave privada o API key de producción está incluida en el código fuente.
-- Los registros de auditoría aplican la función `redactPII()` para enmascarar correos (`[EMAIL_PROTEGIDO]`) y tokens (`[API_KEY_CONFIDENCIAL]`).
-- App Check protege todos los endpoints cloud contra abusos y scraping no autorizado.
+## 🛡️ 6. Security & Data Protection
+- Production secrets are strictly protected from git tracking via `.gitignore`.
+- PII detection runs locally in browser memory before any network request is initiated.
+- Cryptographic attestation verifies that client requests originate from genuine app instances.
+
+---
+
+## 📜 7. License
+Distributed under the **Apache-2.0** Open Source License. See [`LICENSE`](file:///C:/Users/jamma/.gemini/antigravity/scratch/hybridagent/LICENSE) for details.  
+Copyright © 2026 Jamar Masias - HYDRA.
