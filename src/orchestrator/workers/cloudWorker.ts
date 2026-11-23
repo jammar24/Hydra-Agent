@@ -5,9 +5,9 @@ export class CloudWorker {
   private defaultModel: string;
   private timeoutMs: number;
 
-  constructor(defaultModel = 'gemini-3.5-flash-lite', timeoutMs = 8000) {
-    this.defaultModel = defaultModel;
-    this.timeoutMs = timeoutMs;
+  constructor(defaultModel?: string, timeoutMs?: number) {
+    this.defaultModel = defaultModel || (typeof import.meta !== 'undefined' && import.meta.env?.VITE_DEFAULT_CLOUD_MODEL) || 'gemini-3.5-flash-lite';
+    this.timeoutMs = timeoutMs || (typeof import.meta !== 'undefined' && Number(import.meta.env?.VITE_CLOUD_TIMEOUT_MS)) || 8000;
   }
 
   public async execute(
@@ -19,7 +19,7 @@ export class CloudWorker {
     const start = performance.now();
 
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('CloudWorker Timeout: Gemini Cloud superó el límite de 8s.')), this.timeoutMs)
+      setTimeout(() => reject(new Error(`CloudWorker Timeout: ${this.defaultModel} superó el límite de ${this.timeoutMs}ms.`)), this.timeoutMs)
     );
 
     const executionPromise = (async () => {
@@ -27,10 +27,10 @@ export class CloudWorker {
       const displayTitle = cleanPrompt.length > 50 ? cleanPrompt.slice(0, 50) + '...' : cleanPrompt;
 
       const chunks = [
-        "Iniciando analisis de contexto via Firebase AI Logic (Gemini Cloud)... ",
-        "Validando atestacion de seguridad App Check y evaluando dependencias del sistema. ",
-        `Para la consulta: "${displayTitle}", se recomienda implementar un patron de orquestacion reactiva con aislamiento de estado y cache local. `,
-        "Conclusiones: Ejecucion completada exitosamente con Gemini en la nube sin comprometer la latencia global del usuario."
+        `Iniciando análisis de contexto via Firebase AI Logic (${this.defaultModel})... `,
+        "Validando atestación de seguridad App Check y evaluando dependencias del sistema. ",
+        `Para la consulta: "${displayTitle}", se recomienda implementar un patrón de orquestación reactiva con aislamiento de estado y caché local. `,
+        `Conclusiones: Ejecución completada exitosamente con ${this.defaultModel} en la nube sin comprometer la latencia global del usuario.`
       ];
 
       let fullContent = '';

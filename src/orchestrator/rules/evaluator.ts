@@ -11,7 +11,7 @@ export class RoutingEvaluator {
   // Patrones PII de Alta Precisión: Correos, Tarjetas, Passwords, API Keys, DNI/SSN
   private static readonly PII_PATTERNS = [
     { type: 'Email', regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/i },
-    { type: 'API Key / Token', regex: /\b(sk-[a-zA-Z0-9_\-]{16,}|AIza[0-9A-Za-z-_]{35}|bearer\s+[a-zA-Z0-9_\-\.]{20,})\b/i },
+    { type: 'API Key / Token', regex: /\b(sk-[a-zA-Z0-9_\-]{8,}|AIza[0-9A-Za-z-_]{20,}|bearer\s+[a-zA-Z0-9_\-\.]{12,})\b/i },
     { type: 'Password / Credencial', regex: /\b(password|contrase[ñn]a|clave|token_privado)\s*[:=]\s*\S+/i },
     { type: 'Credit Card', regex: /\b(?:\d{4}[ -]?){3}\d{4}\b/ },
     { type: 'DNI / SSN / Cédula', regex: /\b\d{3}-\d{2}-\d{4}\b|\b\d{8,10}\b/ }

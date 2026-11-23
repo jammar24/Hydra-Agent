@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, LogIn, ShieldCheck, Mail, Lock, Sparkles, AlertCircle, Eye, EyeOff, UserPlus, Check } from 'lucide-react';
-import { loginWithEmail, loginAnonymously } from '../firebase';
+import { loginWithEmail, registerWithEmail, loginAnonymously } from '../firebase';
 import { Language, translations } from '../i18n';
 
 export interface UserProfile {
@@ -43,7 +43,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
     setAuthError(null);
 
     try {
-      const fbUser = await loginWithEmail(email, password);
+      const fbUser = tab === 'login'
+        ? await loginWithEmail(email, password)
+        : await registerWithEmail(email, password);
       onLogin({
         uid: fbUser.uid,
         email: fbUser.email,

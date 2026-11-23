@@ -9,7 +9,7 @@ import { ApiView } from './views/ApiView';
 import { SecurityView } from './views/SecurityView';
 import { AuthModal, UserProfile } from './components/AuthModal';
 import { Footer } from './components/Footer';
-import { logoutUser, loginAnonymously } from './firebase';
+import { logoutUser, loginAnonymously, subscribeToAuthChanges } from './firebase';
 import { Language, translations } from './i18n';
 import { 
   Zap, Cloud, Wifi, WifiOff, Cpu, Activity, 
@@ -53,6 +53,21 @@ export const App: React.FC = () => {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // Suscripción al estado de autenticación real de Firebase
+  useEffect(() => {
+    const unsubscribe = subscribeToAuthChanges((fbUser) => {
+      if (fbUser) {
+        setUser({
+          uid: fbUser.uid,
+          email: fbUser.email,
+          displayName: fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0] : (lang === 'es' ? 'Invitado Firebase' : 'Firebase Guest')),
+          isAnonymous: fbUser.isAnonymous
+        });
+      }
+    });
+    return () => unsubscribe();
+  }, [lang]);
 
   // Sincronización con URL Hash
   useEffect(() => {

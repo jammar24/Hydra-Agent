@@ -37,12 +37,15 @@ if (typeof window !== 'undefined') {
   });
 
   // Inicializar App Check (RNF-10: Token de depuración local aceptado en bases de Devpost)
-  const debugToken = import.meta.env.VITE_FIREBASE_APPCHECK_DEBUG_TOKEN || 'hybrid-agent-debug-token';
+  const debugToken = import.meta.env.VITE_FIREBASE_APPCHECK_DEBUG_TOKEN;
+  if (debugToken) {
+    (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = debugToken;
+  }
   try {
     initializeAppCheck(app, {
       provider: new CustomProvider({
         getToken: () => Promise.resolve({
-          token: debugToken,
+          token: debugToken || 'hybrid-agent-debug-token',
           expireTimeMillis: Date.now() + 60 * 60 * 1000
         })
       }),
@@ -59,8 +62,22 @@ export async function loginWithEmail(email: string, pass: string): Promise<Fireb
     const cred = await signInWithEmailAndPassword(auth, email, pass);
     return cred.user;
   } catch (error: any) {
-    console.warn('Firebase Auth Auth fallback (offline/demo):', error.message);
+    console.warn('Firebase Auth Login fallback (offline/demo):', error.message);
     // Modo de desarrollo/fallback para demo sin conexión
+    return {
+      uid: 'user_' + btoa(email).substring(0, 10),
+      email: email,
+      displayName: email.split('@')[0]
+    };
+  }
+}
+
+export async function registerWithEmail(email: string, pass: string): Promise<FirebaseUser | { uid: string; email: string; displayName: string }> {
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    return cred.user;
+  } catch (error: any) {
+    console.warn('Firebase Auth Register fallback (offline/demo):', error.message);
     return {
       uid: 'user_' + btoa(email).substring(0, 10),
       email: email,
@@ -89,4 +106,8 @@ export async function logoutUser(): Promise<void> {
   } catch (e) {
     console.warn('Error cerrando sesión:', e);
   }
+}
+
+export function subscribeToAuthChanges(callback: (user: FirebaseUser | null) => void) {
+  return onAuthStateChanged(auth, callback);
 }

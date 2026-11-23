@@ -15,6 +15,7 @@ node_modules/
 dist/
 dist-ssr/
 build/
+tests/run.mjs
 
 # Logs
 npm-debug.log*

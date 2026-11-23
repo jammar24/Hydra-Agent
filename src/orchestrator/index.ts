@@ -11,6 +11,7 @@ import { LocalWorker } from './workers/localWorker';
 import { CloudWorker } from './workers/cloudWorker';
 
 export interface OrchestratorOptions {
+  defaultCloudModel?: string;
   maxLocalTokens?: number;
   cloudTimeoutMs?: number;
   initialMode?: RoutingMode;
@@ -25,10 +26,14 @@ export class HybridOrchestrator {
   private metrics: OrchestratorMetric[] = [];
 
   constructor(options?: OrchestratorOptions) {
+    const defaultModel = options?.defaultCloudModel || (typeof import.meta !== 'undefined' && import.meta.env?.VITE_DEFAULT_CLOUD_MODEL) || 'gemini-3.5-flash-lite';
+    const cloudTimeout = options?.cloudTimeoutMs || (typeof import.meta !== 'undefined' && Number(import.meta.env?.VITE_CLOUD_TIMEOUT_MS)) || 8000;
+    const maxTokens = options?.maxLocalTokens || (typeof import.meta !== 'undefined' && Number(import.meta.env?.VITE_LOCAL_MODEL_MAX_TOKENS)) || 9216;
+
     this.localWorker = new LocalWorker();
-    this.cloudWorker = new CloudWorker('gemini-3.5-flash-lite', options?.cloudTimeoutMs || 8000);
+    this.cloudWorker = new CloudWorker(defaultModel, cloudTimeout);
     this.mode = options?.initialMode || 'auto';
-    this.maxLocalTokens = options?.maxLocalTokens || 9216;
+    this.maxLocalTokens = maxTokens;
   }
 
   public setMode(mode: RoutingMode): void {
