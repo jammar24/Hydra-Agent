@@ -63,6 +63,8 @@ export interface StructuredTaskItem {
 
 export interface WorkerExecutionResult {
   taskId: string;
+  prompt?: string;
+  model?: string;
   source: 'local' | 'cloud' | 'cascade';
   content: string;
   structuredTasks?: StructuredTaskItem[];
@@ -75,6 +77,22 @@ export interface WorkerExecutionResult {
   isStreaming?: boolean;
   isRealHardware?: boolean;
   speculativePreview?: string;
+}
+
+export interface PersistedTaskRecord {
+  taskId: string;
+  prompt: string;
+  response: string;
+  head: 'LOCAL' | 'CLOUD' | 'CASCADE';
+  model: string;
+  latencyMs: number;
+  savedCost: number;
+  complexityScore: number;
+  intent: string;
+  structuredTasks: StructuredTaskItem[];
+  createdAt: number;
+  routerReason?: string;
+  confidenceScore?: number;
 }
 
 export interface OrchestratorMetric {

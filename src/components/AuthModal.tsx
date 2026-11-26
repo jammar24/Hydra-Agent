@@ -65,6 +65,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
 
     try {
       const fbUser = await loginWithGoogle();
+      if (!fbUser) return; // Redirecting via signInWithRedirect
       onLogin({
         uid: fbUser.uid,
         email: fbUser.email,
@@ -74,11 +75,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
       setLoading(false);
       onClose();
     } catch (err: any) {
-      if (err?.code === 'auth/popup-closed-by-user') {
-        setAuthError(lang === 'es' ? 'Inicio con Google cancelado.' : 'Google sign-in was cancelled.');
-      } else {
-        setAuthError(err.message || (lang === 'es' ? 'Error al autenticar con Google.' : 'Google authentication error.'));
-      }
+      setAuthError(err.message || (lang === 'es' ? 'Error al autenticar con Google.' : 'Google authentication error.'));
       setLoading(false);
     }
   };

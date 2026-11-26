@@ -134,10 +134,10 @@ Live Production Application: [https://hydra-agent.vercel.app/](https://hydra-age
 ## 6. Security & Data Protection
 - **Secret Hygiene:** Production keys live in `.env.local` and are excluded from version control via `.gitignore`.
 - **In-Memory PII Shield:** Detects and redacts emails, API keys, passwords, credit cards, and IDs/SSNs before logging or network dispatch.
-- **Authentication & App Check:** Supports Google Sign-In and Email/Password via Firebase Auth, with App Check attestation and strict offline-only fallback (`auth/network-request-failed`).
+- **Authentication & App Check:** Supports Google Sign-In (`signInWithPopup` with automatic `signInWithRedirect` + `getRedirectResult` fallback) and Email/Password via Firebase Auth, with App Check attestation and strict offline-only fallback (`auth/network-request-failed`).
 - **HTTP Hardening (`vercel.json`):** Enforces `Content-Security-Policy`, `Strict-Transport-Security`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy: same-origin-allow-popups`, and `Cross-Origin-Embedder-Policy: credentialless`.
-- **Export Sanitization:** Neutralizes CSV formula injection (`=`, `+`, `-`, `@`) on audit exports and revokes temporary Blob URLs after download.
-- **Persistent User History:** Saves PII-redacted task responses and metrics per authenticated user (`localStorage` + Firestore `inference_audit` sync), with 1-click response copy, route filters, and history clearing.
+- **Export Sanitization & PDF Reports:** Neutralizes CSV formula injection (`=`, `+`, `-`, `@`) on audit exports, revokes temporary Blob URLs after download, and generates light-mode technical PDF reports with XAI metrics and escaped Markdown rendering.
+- **Persistent User History:** Saves PII-redacted tasks under `users/{uid}/tasks/{taskId}` in Cloud Firestore + `localStorage` backup (`taskId`, `prompt`, `response`, `head`, `model`, `latencyMs`, `savedCost`, `complexityScore`, `intent`, `structuredTasks`, `createdAt`), with rich Markdown + code block rendering, 1-click response/code copy, route filters, and viewer reload.
 
 ---
 

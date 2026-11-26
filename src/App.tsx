@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { HybridOrchestrator } from './orchestrator';
-import { WorkerExecutionResult, OrchestratorMetric, RoutingMode, RoutingDecision } from './orchestrator/types';
+import { WorkerExecutionResult, OrchestratorMetric, RoutingMode, RoutingDecision, PersistedTaskRecord } from './orchestrator/types';
 import { RoutingEvaluator } from './orchestrator/rules/evaluator';
 import { getRouteFromHash, setRouteHash, AppRoute } from './router';
 import { HomeView } from './views/HomeView';
@@ -10,15 +10,24 @@ import { SecurityView } from './views/SecurityView';
 import { AuthModal, UserProfile } from './components/AuthModal';
 import { Footer } from './components/Footer';
 import { HydraLogo } from './components/HydraLogo';
-import { logoutUser, loginWithGoogle, subscribeToAuthChanges, saveAuditToFirestore, loadAuditFromFirestore } from './firebase';
+import { MarkdownRenderer } from './components/MarkdownRenderer';
+import { exportTaskResultToPdf } from './utils/pdfExport';
+import {
+  logoutUser,
+  loginWithGoogle,
+  handleGoogleRedirectResult,
+  subscribeToAuthChanges,
+  saveUserTaskToFirestore,
+  loadUserTasksFromFirestore
+} from './firebase';
 import { Language, translations } from './i18n';
 import { 
   Zap, Cloud, Wifi, WifiOff, Cpu, Activity, 
   Layers, Clock, ShieldCheck, CheckCircle2, ArrowRight,
   Sparkles, Terminal, RefreshCw, Compass, FileSpreadsheet,
-  FileCode, Play, Lock, Home, BookOpen, Code2, LogIn, LogOut,
+  FileCode, FileText, Play, Lock, Home, BookOpen, Code2, LogIn, LogOut,
   Shield, Sun, Moon, Globe, Check, AlertCircle, DollarSign,
-  TrendingDown, Gauge, Copy, Trash2
+  TrendingDown, Gauge, Copy, Trash2, Eye
 } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -59,8 +68,19 @@ export const App: React.FC = () => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // Subscribe to auth state
+  // Subscribe to auth state & process Google redirect result on load
   useEffect(() => {
+    handleGoogleRedirectResult().then((fbUser) => {
+      if (fbUser) {
+        setUser({
+          uid: fbUser.uid,
+          email: fbUser.email,
+          displayName: fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0] : 'Google User'),
+          isAnonymous: fbUser.isAnonymous
+        });
+      }
+    });
+
     const unsubscribe = subscribeToAuthChanges((fbUser) => {
       if (fbUser) {
         setUser({
@@ -129,7 +149,7 @@ export const App: React.FC = () => {
     setIsNativeHardware(orchestrator.getLocalWorker().getStatus().isNative);
   };
 
-  // Load persisted history & metrics per user
+  // Load persisted history & metrics per user (localStorage + Firestore users/{uid}/tasks)
   useEffect(() => {
     if (!user?.uid) return;
     const hKey = `hydra_history_${user.uid}`;
@@ -149,29 +169,98 @@ export const App: React.FC = () => {
       // Ignore corrupted local storage
     }
 
-    loadAuditFromFirestore(user.uid).then((remoteDocs) => {
+    loadUserTasksFromFirestore(user.uid).then((remoteDocs) => {
       if (remoteDocs.length > 0) {
+        const mappedRemote: WorkerExecutionResult[] = remoteDocs
+          .filter((d) => d?.taskId)
+          .map((d: any) => {
+            const source: 'local' | 'cloud' | 'cascade' =
+              d.head === 'LOCAL' ? 'local' : d.head === 'CASCADE' ? 'cascade' : 'cloud';
+            return {
+              taskId: d.taskId,
+              prompt: d.prompt || '',
+              model: d.model || '',
+              source,
+              content: d.response || d.content || '',
+              structuredTasks: Array.isArray(d.structuredTasks) ? d.structuredTasks : [],
+              summary: d.prompt ? `Task: ${String(d.prompt).slice(0, 60)}` : d.summary,
+              latencyMs: Number(d.latencyMs) || 0,
+              timestamp: Number(d.createdAt || d.timestamp) || Date.now(),
+              routerReason: d.routerReason || `${d.head || 'CLOUD'} (${d.model || 'gemini'})`,
+              breakdown: d.breakdown || {
+                tokenCount: Math.ceil((d.prompt?.length || 0) / 3.8),
+                hasPII: false,
+                detectedPIITypes: [],
+                intent: d.intent || 'general',
+                complexityScore: Number(d.complexityScore) || 0,
+                privacyForcedLocal: source === 'local',
+                privacyScore: 100,
+                latencySensitivityScore: 80,
+                cloudSavingsScore: source === 'local' ? 100 : 0,
+                confidenceScore: Number(d.confidenceScore) || 95,
+                estimatedCostUSD: Number(d.savedCost) || 0
+              }
+            };
+          });
+
         setHistory((prev) => {
           const existingIds = new Set(prev.map((p) => p.taskId));
-          const merged = [...prev, ...remoteDocs.filter((d) => d?.taskId && !existingIds.has(d.taskId))];
+          const merged = [...prev, ...mappedRemote.filter((d) => !existingIds.has(d.taskId))];
           merged.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-          return merged.slice(0, 50);
+          const sliced = merged.slice(0, 50);
+          try {
+            localStorage.setItem(hKey, JSON.stringify(sliced));
+          } catch {
+            // Ignore quota errors
+          }
+          if (sliced.length > 0) {
+            setLatestResult((curr) => curr || sliced[0]);
+          }
+          return sliced;
         });
       }
     });
   }, [user?.uid]);
 
-  const persistHistoryItem = (result: WorkerExecutionResult, updatedMetrics: OrchestratorMetric[]) => {
+  const persistHistoryItem = (result: WorkerExecutionResult, updatedMetrics: OrchestratorMetric[], submittedPrompt?: string) => {
+    const cleanPrompt = RoutingEvaluator.redactPII(submittedPrompt || result.prompt || '');
+    const modelName =
+      result.model ||
+      (result.source === 'local'
+        ? 'gemini-nano'
+        : import.meta.env.VITE_DEFAULT_CLOUD_MODEL || 'gemini-3.5-flash-lite');
+
     const safeResult: WorkerExecutionResult = {
       ...result,
+      prompt: cleanPrompt,
+      model: modelName,
       content: RoutingEvaluator.redactPII(result.content),
       routerReason: RoutingEvaluator.redactPII(result.routerReason),
       summary: result.summary ? RoutingEvaluator.redactPII(result.summary) : undefined
     };
 
+    const head: 'LOCAL' | 'CLOUD' | 'CASCADE' =
+      safeResult.source === 'local' ? 'LOCAL' : safeResult.source === 'cascade' ? 'CASCADE' : 'CLOUD';
+
+    const taskRecord: PersistedTaskRecord = {
+      taskId: safeResult.taskId,
+      prompt: cleanPrompt,
+      response: safeResult.content,
+      head,
+      model: modelName,
+      latencyMs: safeResult.latencyMs,
+      savedCost: safeResult.breakdown.estimatedCostUSD,
+      complexityScore: safeResult.breakdown.complexityScore,
+      intent: safeResult.breakdown.intent,
+      structuredTasks: safeResult.structuredTasks || [],
+      createdAt: safeResult.timestamp,
+      routerReason: safeResult.routerReason,
+      confidenceScore: safeResult.breakdown.confidenceScore
+    };
+
     setLatestResult(safeResult);
     setHistory((prev) => {
-      const next = [safeResult, ...prev].slice(0, 50);
+      const next = [safeResult, ...prev.filter((p) => p.taskId !== safeResult.taskId)].slice(0, 50);
       if (user?.uid) {
         try {
           localStorage.setItem(`hydra_history_${user.uid}`, JSON.stringify(next));
@@ -179,7 +268,7 @@ export const App: React.FC = () => {
         } catch {
           // Ignore storage quota errors
         }
-        saveAuditToFirestore(user.uid, safeResult as unknown as Record<string, unknown>);
+        saveUserTaskToFirestore(user.uid, safeResult.taskId, taskRecord as unknown as Record<string, unknown>);
       }
       return next;
     });
@@ -224,7 +313,7 @@ export const App: React.FC = () => {
 
     const updatedMetrics = orchestrator.getMetrics();
     if (outcome.result) {
-      persistHistoryItem(outcome.result, updatedMetrics);
+      persistHistoryItem(outcome.result, updatedMetrics, promptToSend);
     }
     setMetrics(updatedMetrics);
     setQueueCount(orchestrator.getQueueLength());
@@ -278,7 +367,7 @@ export const App: React.FC = () => {
       const outcome = await orchestrator.dispatch(p, isOnline, user ? user.uid : 'benchmark_user');
       const updatedMetrics = orchestrator.getMetrics();
       if (outcome.result) {
-        persistHistoryItem(outcome.result, updatedMetrics);
+        persistHistoryItem(outcome.result, updatedMetrics, p);
       }
       setMetrics(updatedMetrics);
       setQueueCount(orchestrator.getQueueLength());
@@ -297,6 +386,7 @@ export const App: React.FC = () => {
     setIsAnonLoading(true);
     try {
       const fbUser = await loginWithGoogle();
+      if (!fbUser) return; // Redirecting via signInWithRedirect
       setUser({
         uid: fbUser.uid,
         email: fbUser.email,
@@ -1005,8 +1095,8 @@ export const App: React.FC = () => {
 
                 {/* Dedicated Response Output Panel */}
                 {!isProcessing && latestResult && (
-                  <div style={{ marginTop: '14px', padding: '16px', background: 'var(--bg-code)', border: '1px solid var(--border-mid)', borderRadius: '10px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                  <div id="response-viewer-panel" style={{ marginTop: '14px', padding: '16px', background: 'var(--bg-code)', border: '1px solid var(--border-mid)', borderRadius: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           {latestResult.source === 'local' ? <Cpu size={14} color="var(--accent-emerald)" /> : latestResult.source === 'cascade' ? <Zap size={14} color="var(--accent-cyan)" /> : <Cloud size={14} color="var(--primary-glow)" />}
@@ -1015,29 +1105,78 @@ export const App: React.FC = () => {
                         <span className={latestResult.source === 'local' ? 'badge badge-green' : latestResult.source === 'cascade' ? 'badge badge-cyan' : 'badge badge-blue'}>
                           {latestResult.source.toUpperCase()} · {latestResult.latencyMs} ms
                         </span>
+                        <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>
+                          ID: {latestResult.taskId}
+                        </span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyResponse(latestResult.content)}
-                        className="btn-ghost"
-                        style={{ padding: '4px 10px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-main)' }}
-                      >
-                        {copiedResponse ? <Check size={12} color="var(--accent-emerald)" /> : <Copy size={12} />}
-                        {copiedResponse ? t.btn_copied_response : t.btn_copy_response}
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyResponse(latestResult.content)}
+                          className="btn-ghost"
+                          style={{ padding: '5px 10px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-main)' }}
+                        >
+                          {copiedResponse ? <Check size={12} color="var(--accent-emerald)" /> : <Copy size={12} />}
+                          {copiedResponse ? t.btn_copied_response : t.btn_copy_response}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => exportTaskResultToPdf(latestResult, lang)}
+                          className="btn-ghost"
+                          style={{ padding: '5px 10px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--accent-cyan)', borderColor: 'rgba(56, 189, 248, 0.3)' }}
+                        >
+                          <FileText size={12} />
+                          {t.btn_generate_pdf}
+                        </button>
+                      </div>
                     </div>
-                    <pre style={{
-                      fontSize: '12.5px',
-                      color: 'var(--text-main)',
-                      fontFamily: 'var(--font-mono)',
-                      lineHeight: '1.6',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
-                      overflowX: 'auto',
-                      margin: 0
+
+                    <MarkdownRenderer
+                      content={RoutingEvaluator.redactPII(latestResult.content)}
+                      copyLabel={t.btn_copy_code}
+                      copiedLabel={t.btn_copied_code}
+                    />
+
+                    {/* Tareas Estructuradas Extraídas (Esquema JSON) con resumen automático si no hay subtareas */}
+                    <div style={{
+                      marginTop: '14px',
+                      background: 'var(--bg-stripe)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: '8px',
+                      padding: '10px 14px'
                     }}>
-                      {RoutingEvaluator.redactPII(latestResult.content)}
-                    </pre>
+                      <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--accent-cyan)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <CheckCircle2 size={12} /> {t.structured_tasks_title}
+                      </div>
+                      {latestResult.structuredTasks && latestResult.structuredTasks.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {latestResult.structuredTasks.map((st) => (
+                            <div key={st.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontSize: '12px' }}>
+                              <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, overflowWrap: 'anywhere' }}>
+                                <ArrowRight size={10} color="var(--primary-glow)" style={{ flexShrink: 0 }} /> {RoutingEvaluator.redactPII(st.title)}
+                              </span>
+                              <span style={{
+                                fontSize: '9px', fontWeight: '700', padding: '2px 6px', borderRadius: '4px', flexShrink: 0,
+                                background: st.priority === 'alta' ? 'rgba(244, 63, 94, 0.15)' : 'var(--bg-stripe)',
+                                color: st.priority === 'alta' ? 'var(--accent-rose)' : 'var(--text-muted)'
+                              }}>
+                                {st.priority.toUpperCase()}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', fontSize: '12px' }}>
+                          <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <ArrowRight size={10} color="var(--accent-emerald)" />
+                            <strong>{t.auto_task_summary_title}:</strong> {RoutingEvaluator.redactPII(latestResult.prompt || latestResult.summary || latestResult.taskId)}
+                          </span>
+                          <span className="badge badge-green" style={{ fontSize: '10px' }}>
+                            {latestResult.breakdown.intent.toUpperCase()} · {latestResult.breakdown.complexityScore}/100
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </section>
@@ -1048,7 +1187,7 @@ export const App: React.FC = () => {
                   <div>
                     <h2 style={{ fontSize: '16px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <Activity size={17} color="var(--accent-emerald)" />
-                      {t.audit_title}
+                      {t.history_section_title}
                       {history.length > 0 && (
                         <span className="badge badge-green" style={{ fontSize: '11px' }}>
                           {history.length}
@@ -1183,12 +1322,23 @@ export const App: React.FC = () => {
                             </span>
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '11px', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <Clock size={12} color="var(--accent-amber)" />
                               {t.latency_label} <strong style={{ color: 'var(--text-main)' }}>{item.latencyMs} ms</strong>
                             </span>
                             <span>{new Date(item.timestamp).toLocaleTimeString()}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLatestResult(item);
+                                document.getElementById('response-viewer-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }}
+                              className="btn-ghost"
+                              style={{ padding: '3px 8px', fontSize: '10.5px', display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--accent-cyan)' }}
+                            >
+                              <Eye size={11} /> {t.btn_load_in_viewer}
+                            </button>
                           </div>
                         </div>
 
@@ -1203,26 +1353,30 @@ export const App: React.FC = () => {
                           </div>
                         )}
 
-                        <div style={{ fontSize: '13px', color: 'var(--text-main)', lineHeight: '1.6', marginBottom: '10px', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
-                          {RoutingEvaluator.redactPII(item.content)}
+                        <div style={{ marginBottom: '10px' }}>
+                          <MarkdownRenderer
+                            content={RoutingEvaluator.redactPII(item.content)}
+                            copyLabel={t.btn_copy_code}
+                            copiedLabel={t.btn_copied_code}
+                          />
                         </div>
 
-                        {item.structuredTasks && item.structuredTasks.length > 0 && (
-                          <div style={{ 
-                            background: 'var(--bg-stripe)', border: '1px solid var(--border-subtle)', 
-                            borderRadius: '8px', padding: '10px 14px', marginBottom: '10px' 
-                          }}>
-                            <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--accent-cyan)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <CheckCircle2 size={12} /> {t.structured_tasks_title}
-                            </div>
+                        <div style={{ 
+                          background: 'var(--bg-stripe)', border: '1px solid var(--border-subtle)', 
+                          borderRadius: '8px', padding: '10px 14px', marginBottom: '10px' 
+                        }}>
+                          <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--accent-cyan)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <CheckCircle2 size={12} /> {t.structured_tasks_title}
+                          </div>
+                          {item.structuredTasks && item.structuredTasks.length > 0 ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                               {item.structuredTasks.map((st) => (
-                                <div key={st.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
-                                  <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <ArrowRight size={10} color="var(--primary-glow)" /> {RoutingEvaluator.redactPII(st.title)}
+                                <div key={st.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontSize: '12px' }}>
+                                  <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, overflowWrap: 'anywhere' }}>
+                                    <ArrowRight size={10} color="var(--primary-glow)" style={{ flexShrink: 0 }} /> {RoutingEvaluator.redactPII(st.title)}
                                   </span>
                                   <span style={{ 
-                                    fontSize: '9px', fontWeight: '700', padding: '2px 6px', borderRadius: '4px',
+                                    fontSize: '9px', fontWeight: '700', padding: '2px 6px', borderRadius: '4px', flexShrink: 0,
                                     background: st.priority === 'alta' ? 'rgba(244, 63, 94, 0.15)' : 'var(--bg-stripe)',
                                     color: st.priority === 'alta' ? 'var(--accent-rose)' : 'var(--text-muted)'
                                   }}>
@@ -1231,8 +1385,18 @@ export const App: React.FC = () => {
                                 </div>
                               ))}
                             </div>
-                          </div>
-                        )}
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', fontSize: '12px' }}>
+                              <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <ArrowRight size={10} color="var(--accent-emerald)" />
+                                <strong>{t.auto_task_summary_title}:</strong> {RoutingEvaluator.redactPII(item.prompt || item.summary || item.taskId)}
+                              </span>
+                              <span className="badge badge-green" style={{ fontSize: '10px' }}>
+                                {item.breakdown.intent.toUpperCase()} · {item.breakdown.complexityScore}/100
+                              </span>
+                            </div>
+                          )}
+                        </div>
 
                         <div style={{ 
                           fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-subtle)', 

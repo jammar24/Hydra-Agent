@@ -161,7 +161,11 @@ VITE_GEMINI_API_KEY=<your-gemini-api-key>
 
 // Export sanitized audit telemetry (formula-injection safe CSV & JSON)
 const jsonLogs = orchestrator.exportAuditLogsAsJSON();
-const csvLogs  = orchestrator.exportAuditLogsAsCSV();`}
+const csvLogs  = orchestrator.exportAuditLogsAsCSV();
+
+// Per-user Firestore persistence: users/{uid}/tasks/{taskId}
+// Stores: taskId, prompt, response, head, model, latencyMs,
+//         savedCost, complexityScore, intent, structuredTasks, createdAt`}
         </pre>
       </section>
 

@@ -121,12 +121,12 @@ export const SecurityView: React.FC<SecurityViewProps> = ({ lang }) => {
 {`rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /inference_audit/{logId} {
+    match /users/{uid}/tasks/{taskId} {
       allow read, delete: if request.auth != null &&
-                            request.auth.uid == resource.data.userId;
+                            request.auth.uid == uid;
       allow create, update: if request.auth != null &&
                               request.appCheck != null &&
-                              request.auth.uid == request.resource.data.userId;
+                              request.auth.uid == uid;
     }
   }
 }`}

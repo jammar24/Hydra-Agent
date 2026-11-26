@@ -140,7 +140,7 @@ export const DocsView: React.FC<DocsViewProps> = ({ lang }) => {
             },
             { 
               tag: lang === 'es' ? 'Auditoría e Historial' : 'Audit & History', 
-              text: lang === 'es' ? 'Panel de respuesta directa y persistencia de historial por usuario en Firestore + almacenamiento local' : 'Dedicated response panel and per-user history persistence in Firestore + local storage', 
+              text: lang === 'es' ? 'Visor Markdown enriquecido, exportación a PDF técnico y persistencia por usuario en Firestore (users/{uid}/tasks/{taskId}) + localStorage' : 'Rich Markdown viewer, technical PDF export, and per-user persistence in Firestore (users/{uid}/tasks/{taskId}) + localStorage', 
               status: lang === 'es' ? 'Activo' : 'Active' 
             },
             { 

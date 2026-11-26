@@ -5,9 +5,9 @@ import {
   Firestore,
   enableIndexedDbPersistence,
   collection,
-  addDoc,
+  doc,
+  setDoc,
   query,
-  where,
   orderBy,
   limit,
   getDocs
@@ -17,6 +17,8 @@ import {
   Auth, 
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut as fbSignOut,
@@ -118,9 +120,32 @@ export async function registerWithEmail(email: string, pass: string): Promise<Fi
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
-export async function loginWithGoogle(): Promise<FirebaseUser> {
-  const cred = await signInWithPopup(auth, googleProvider);
-  return cred.user;
+export async function loginWithGoogle(): Promise<FirebaseUser | null> {
+  try {
+    const cred = await signInWithPopup(auth, googleProvider);
+    return cred.user;
+  } catch (error: any) {
+    const code = error?.code || '';
+    if (
+      code === 'auth/popup-blocked' ||
+      code === 'auth/cancelled-popup-request' ||
+      code === 'auth/popup-closed-by-user'
+    ) {
+      await signInWithRedirect(auth, googleProvider);
+      return null;
+    }
+    throw error;
+  }
+}
+
+export async function handleGoogleRedirectResult(): Promise<FirebaseUser | null> {
+  try {
+    const result = await getRedirectResult(auth);
+    return result?.user || null;
+  } catch (err) {
+    console.warn('Google redirect result error:', err);
+    return null;
+  }
 }
 
 export async function logoutUser(): Promise<void> {
@@ -135,32 +160,32 @@ export function subscribeToAuthChanges(callback: (user: FirebaseUser | null) => 
   return onAuthStateChanged(auth, callback);
 }
 
-// Persistent audit history helpers (Firestore with safe fallback)
-export async function saveAuditToFirestore(userId: string, record: Record<string, unknown>): Promise<void> {
-  if (isDemoConfig || !userId) return;
+// Persistent per-user task history helpers: users/{uid}/tasks/{taskId}
+export async function saveUserTaskToFirestore(userId: string, taskId: string, record: Record<string, unknown>): Promise<void> {
+  if (isDemoConfig || !userId || !taskId) return;
   try {
-    await addDoc(collection(db, 'inference_audit'), {
+    await setDoc(doc(db, 'users', userId, 'tasks', taskId), {
       ...record,
+      taskId,
       userId
     });
   } catch (err) {
-    console.warn('Firestore audit write skipped (offline or rules):', err);
+    console.warn('Firestore task write skipped (offline or rules):', err);
   }
 }
 
-export async function loadAuditFromFirestore(userId: string, maxItems = 40): Promise<any[]> {
+export async function loadUserTasksFromFirestore(userId: string, maxItems = 50): Promise<any[]> {
   if (isDemoConfig || !userId) return [];
   try {
     const q = query(
-      collection(db, 'inference_audit'),
-      where('userId', '==', userId),
-      orderBy('timestamp', 'desc'),
+      collection(db, 'users', userId, 'tasks'),
+      orderBy('createdAt', 'desc'),
       limit(maxItems)
     );
     const snap = await getDocs(q);
     return snap.docs.map((d) => d.data());
   } catch (err) {
-    console.warn('Firestore audit read skipped (offline or index/rules):', err);
+    console.warn('Firestore task read skipped (offline or rules):', err);
     return [];
   }
 }
