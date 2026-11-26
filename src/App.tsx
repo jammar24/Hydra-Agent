@@ -62,6 +62,7 @@ export const App: React.FC = () => {
   const [latestResult, setLatestResult] = useState<WorkerExecutionResult | null>(null);
   const [copiedResponse, setCopiedResponse] = useState(false);
   const [historyFilter, setHistoryFilter] = useState<'all' | 'local' | 'cloud' | 'cascade'>('all');
+  const [dashboardTab, setDashboardTab] = useState<'console' | 'history'>('console');
 
   // Sync theme
   useEffect(() => {
@@ -682,6 +683,37 @@ export const App: React.FC = () => {
                   </h1>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <div style={{
+                    display: 'inline-flex', padding: '4px', borderRadius: '10px',
+                    background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', gap: '4px'
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => setDashboardTab('console')}
+                      className={dashboardTab === 'console' ? 'btn-primary' : 'btn-ghost'}
+                      style={{ padding: '6px 14px', borderRadius: '7px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', border: dashboardTab === 'console' ? undefined : 'none' }}
+                    >
+                      <Terminal size={13} /> {t.dash_tab_console}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDashboardTab('history')}
+                      className={dashboardTab === 'history' ? 'btn-primary' : 'btn-ghost'}
+                      style={{ padding: '6px 14px', borderRadius: '7px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', border: dashboardTab === 'history' ? undefined : 'none' }}
+                    >
+                      <Activity size={13} /> {t.dash_tab_history}
+                      {history.length > 0 && (
+                        <span style={{
+                          padding: '1px 6px', borderRadius: '10px', fontSize: '10px', fontWeight: '800',
+                          background: dashboardTab === 'history' ? 'rgba(255,255,255,0.22)' : 'rgba(16,185,129,0.15)',
+                          color: dashboardTab === 'history' ? '#ffffff' : 'var(--accent-emerald)'
+                        }}>
+                          {history.length}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+
                   <span className={isOnline ? 'badge badge-green' : 'badge badge-rose'}>
                     <span className={isOnline ? 'dot dot-green' : 'dot dot-rose'} />
                     {isOnline ? t.status_online : t.status_offline}
@@ -692,6 +724,8 @@ export const App: React.FC = () => {
                 </div>
               </div>
 
+              {dashboardTab === 'console' && (
+              <>
               {/* 4 Heads Status Strip (1 -> 2 -> 3 -> 4) */}
               <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '14px' }}>
 
@@ -1180,8 +1214,11 @@ export const App: React.FC = () => {
                   </div>
                 )}
               </section>
+              </>
+              )}
 
-              {/* Feed de Auditoría */}
+              {dashboardTab === 'history' && (
+              /* Feed de Auditoría / Pestaña de Historial */
               <section className="glass-panel" style={{ padding: '24px', flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
                   <div>
@@ -1332,7 +1369,10 @@ export const App: React.FC = () => {
                               type="button"
                               onClick={() => {
                                 setLatestResult(item);
-                                document.getElementById('response-viewer-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                setDashboardTab('console');
+                                setTimeout(() => {
+                                  document.getElementById('response-viewer-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }, 80);
                               }}
                               className="btn-ghost"
                               style={{ padding: '3px 8px', fontSize: '10.5px', display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--accent-cyan)' }}
@@ -1341,6 +1381,21 @@ export const App: React.FC = () => {
                             </button>
                           </div>
                         </div>
+
+                        {item.prompt && (
+                          <div style={{
+                            fontSize: '12px',
+                            color: 'var(--text-muted)',
+                            background: 'var(--bg-stripe)',
+                            border: '1px solid var(--border-subtle)',
+                            borderRadius: '6px',
+                            padding: '6px 10px',
+                            marginBottom: '8px',
+                            overflowWrap: 'anywhere'
+                          }}>
+                            <strong style={{ color: 'var(--text-main)' }}>{t.history_prompt_label}</strong> {RoutingEvaluator.redactPII(item.prompt)}
+                          </div>
+                        )}
 
                         {/* Pre-Análisis Especulativo si ocurrió en cascada */}
                         {item.speculativePreview && (
@@ -1415,6 +1470,7 @@ export const App: React.FC = () => {
                   </div>
                 )}
               </section>
+              )}
 
             </div>
           )}

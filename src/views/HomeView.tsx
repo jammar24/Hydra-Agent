@@ -40,7 +40,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onGoToDashboard, onGoToDocs,
         </div>
 
         <h1 style={{ 
-          fontSize: 'clamp(2.4rem, 5.5vw, 4rem)', fontWeight: '900', lineHeight: '1.15',
+          fontSize: 'clamp(2.1rem, 4.2vw, 3.6rem)', fontWeight: '900', lineHeight: '1.15',
           letterSpacing: '-0.03em', marginBottom: '20px',
           color: 'var(--text-main)'
         }}>
@@ -55,7 +55,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onGoToDashboard, onGoToDocs,
           </span>
         </h1>
 
-        <p style={{ maxWidth: '760px', margin: '0 auto 36px', fontSize: '16px', color: 'var(--text-muted)', lineHeight: '1.7' }}>
+        <p style={{ maxWidth: '820px', margin: '0 auto 32px', fontSize: 'clamp(14.5px, 1.15vw, 17px)', color: 'var(--text-muted)', lineHeight: '1.7' }}>
           {t.hero_desc}
         </p>
 
@@ -105,7 +105,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onGoToDashboard, onGoToDocs,
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '16px' }}>
+        <div className="heads-grid">
           
           {/* Cabeza 1: Local */}
           <div className="glass-panel" style={{ padding: '28px 24px' }}>
@@ -218,12 +218,12 @@ export const HomeView: React.FC<HomeViewProps> = ({ onGoToDashboard, onGoToDocs,
         </div>
 
         <div className="glass-panel" style={{
-          maxWidth: '640px',
+          maxWidth: '760px',
           margin: '0 auto',
-          padding: '20px 24px',
+          padding: '22px 26px',
           display: 'flex',
           alignItems: 'center',
-          gap: '20px',
+          gap: '22px',
           flexWrap: 'wrap'
         }}>
           <img

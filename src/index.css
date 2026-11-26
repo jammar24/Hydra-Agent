@@ -537,6 +537,36 @@ input:focus, select:focus, textarea:focus {
 
 /* ─── RESPONSIVE BREAKPOINTS ─────────────────────────────────────── */
 
+/* Large Desktop / 32-inch QHD & 4K Monitors (>= 1600px) */
+@media (min-width: 1600px) {
+  :root { --sidebar-w: 224px; }
+  html { font-size: 16px; }
+  .page-wrapper {
+    max-width: 1520px;
+    padding: 28px 36px 40px;
+  }
+  .hero-panel {
+    padding: 56px 48px !important;
+  }
+}
+
+/* Heads Grid: 4 columns on desktop, 2 on tablet, 1 on mobile */
+.heads-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+@media (max-width: 1180px) {
+  .heads-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .heads-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Tablet (<= 1024px): narrow sidebar, icons only */
 @media (max-width: 1024px) {
   :root { --sidebar-w: var(--sidebar-w-collapsed); }
