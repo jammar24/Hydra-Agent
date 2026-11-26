@@ -21,10 +21,10 @@ export const SecurityView: React.FC<SecurityViewProps> = ({ lang }) => {
   const t = translations[lang];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', padding: '10px 0 60px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', padding: '4px 0 24px' }}>
       
       {/* Header Seguridad */}
-      <div className="glass-panel" style={{ padding: '32px' }}>
+      <div className="glass-panel" style={{ padding: '22px 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '12px' }}>
           <div style={{
             width: '42px', height: '42px', borderRadius: '12px',
@@ -44,7 +44,7 @@ export const SecurityView: React.FC<SecurityViewProps> = ({ lang }) => {
       </div>
 
       {/* Grid de 4 Pilares de Seguridad */}
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 270px), 1fr))', gap: '16px' }}>
         
         {/* 1. App Check */}
         <div className="glass-panel" style={{ padding: '24px' }}>
@@ -105,7 +105,7 @@ export const SecurityView: React.FC<SecurityViewProps> = ({ lang }) => {
       </section>
 
       {/* Reglas de Seguridad Firebase Firestore */}
-      <section className="glass-panel" style={{ padding: '32px' }}>
+      <section className="glass-panel" style={{ padding: '28px' }}>
         <h2 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px' }}>
           {t.sec_rules_title}
         </h2>
@@ -114,18 +114,19 @@ export const SecurityView: React.FC<SecurityViewProps> = ({ lang }) => {
         </p>
 
         <pre style={{
-          background: 'rgba(0, 0, 0, 0.4)', padding: '18px 22px', borderRadius: '10px',
-          border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: '13px',
-          color: 'var(--text-main)', lineHeight: '1.6', overflowX: 'auto'
+          background: 'var(--bg-code)', padding: '18px 20px', borderRadius: '10px',
+          border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: '12.5px',
+          color: 'var(--text-main)', lineHeight: '1.6', overflowX: 'auto', maxWidth: '100%'
         }}>
 {`rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /inference_audit/{logId} {
-      // Validate authenticated user and App Check token attestation
-      allow read, write: if request.auth != null && 
-                            request.appCheck != null &&
-                            request.auth.uid == request.resource.data.userId;
+      allow read, delete: if request.auth != null &&
+                            request.auth.uid == resource.data.userId;
+      allow create, update: if request.auth != null &&
+                              request.appCheck != null &&
+                              request.auth.uid == request.resource.data.userId;
     }
   }
 }`}

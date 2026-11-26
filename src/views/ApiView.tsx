@@ -36,32 +36,31 @@ const result = await orchestrator.dispatch(
 );
 
 console.log("Selected route:", result.decision.target); // 'local' | 'cloud' | 'cascade' | 'queue'
+console.log("Response content:", result.result?.content);
 console.log("Technical rationale:", result.decision.reason);
 console.log("Complexity score:", result.decision.breakdown.complexityScore); // 0 - 100
 console.log("Confidence certainty:", result.decision.breakdown.confidenceScore + "%");
 console.log("Estimated cost saved:", "$" + result.decision.breakdown.estimatedCostUSD);`;
 
-  const windowAIExample = `// Chrome Desktop Prompt API native initialization
-if (window.ai?.languageModel) {
-  const capabilities = await window.ai.languageModel.capabilities();
-  
-  if (capabilities.available === 'readily') {
-    const session = await window.ai.languageModel.create({
-      systemPrompt: "You are Gemini Nano, a high-speed on-device model."
-    });
+  const localInitExample = `import { HybridOrchestrator } from './orchestrator';
 
-    const stream = session.promptStreaming("Extract structured tasks into JSON...");
-    for await (const chunk of stream) {
-      console.log(chunk);
-    }
-  }
-}`;
+const orchestrator = new HybridOrchestrator();
+const localWorker = orchestrator.getLocalWorker();
+
+// Check native Chrome Prompt API availability and initialize session
+const isNative = await localWorker.checkNativeAvailability();
+await localWorker.initializeDeviceModel((progressPct) => {
+  console.log(\`Loading on-device model: \${progressPct}%\`);
+});
+
+const status = localWorker.getStatus();
+console.log("Ready:", status.isReady, "Native hardware:", status.isNative);`;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', padding: '10px 0 60px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', padding: '4px 0 24px' }}>
       
       {/* Header API */}
-      <div className="glass-panel" style={{ padding: '32px' }}>
+      <div className="glass-panel" style={{ padding: '22px 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
           <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Code2 size={22} color="var(--primary-glow)" />
@@ -74,15 +73,16 @@ if (window.ai?.languageModel) {
       </div>
 
       {/* Endpoint 1: dispatch */}
-      <section className="glass-panel" style={{ padding: '32px' }}>
+      <section className="glass-panel" style={{ padding: '28px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-          <h2 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h2 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-main)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px', minWidth: 0 }}>
             <span style={{ padding: '3px 8px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.15)', color: 'var(--primary-glow)', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>METHOD</span>
-            <code>orchestrator.dispatch(prompt, isOnline, userId, onToken)</code>
+            <code style={{ wordBreak: 'break-word' }}>{t.api_method1_title}</code>
           </h2>
           <button
             onClick={() => copyCode('dispatch', dispatchExample)}
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+            className="btn-ghost"
+            style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             {copiedId === 'dispatch' ? <Check size={14} color="var(--accent-emerald)" /> : <Copy size={14} />}
             {copiedId === 'dispatch' ? t.api_btn_copied : t.api_btn_copy}
@@ -94,27 +94,28 @@ if (window.ai?.languageModel) {
         </p>
 
         <pre style={{
-          background: 'rgba(0, 0, 0, 0.4)', padding: '18px 22px', borderRadius: '10px',
+          background: 'var(--bg-code)', padding: '16px 18px', borderRadius: '10px',
           border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: '12px',
-          color: 'var(--text-main)', lineHeight: '1.6', overflowX: 'auto'
+          color: 'var(--text-main)', lineHeight: '1.6', overflowX: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch'
         }}>
           {dispatchExample}
         </pre>
       </section>
 
-      {/* Endpoint 2: window.ai */}
-      <section className="glass-panel" style={{ padding: '32px' }}>
+      {/* Endpoint 2: localWorker */}
+      <section className="glass-panel" style={{ padding: '28px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-          <h2 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h2 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-main)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px', minWidth: 0 }}>
             <span style={{ padding: '3px 8px', borderRadius: '4px', background: 'rgba(56, 189, 248, 0.15)', color: 'var(--accent-cyan)', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>DEVICE API</span>
-            <code>window.ai.languageModel (Chrome Prompt API)</code>
+            <code style={{ wordBreak: 'break-word' }}>{t.api_method2_title}</code>
           </h2>
           <button
-            onClick={() => copyCode('windowai', windowAIExample)}
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+            onClick={() => copyCode('localinit', localInitExample)}
+            className="btn-ghost"
+            style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
-            {copiedId === 'windowai' ? <Check size={14} color="var(--accent-emerald)" /> : <Copy size={14} />}
-            {copiedId === 'windowai' ? t.api_btn_copied : t.api_btn_copy}
+            {copiedId === 'localinit' ? <Check size={14} color="var(--accent-emerald)" /> : <Copy size={14} />}
+            {copiedId === 'localinit' ? t.api_btn_copied : t.api_btn_copy}
           </button>
         </div>
 
@@ -123,11 +124,11 @@ if (window.ai?.languageModel) {
         </p>
 
         <pre style={{
-          background: 'rgba(0, 0, 0, 0.4)', padding: '18px 22px', borderRadius: '10px',
+          background: 'var(--bg-code)', padding: '16px 18px', borderRadius: '10px',
           border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: '12px',
-          color: 'var(--text-main)', lineHeight: '1.6', overflowX: 'auto'
+          color: 'var(--text-main)', lineHeight: '1.6', overflowX: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch'
         }}>
-          {windowAIExample}
+          {localInitExample}
         </pre>
       </section>
 

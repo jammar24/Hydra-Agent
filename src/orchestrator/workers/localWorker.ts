@@ -106,28 +106,43 @@ export class LocalWorker {
         onToken?.(textOutput);
       }
     } else {
-      // B. High-fidelity local runtime execution
+      // B. Structured local runtime execution
       const safePrompt = RoutingEvaluator.redactPII(task.prompt);
-      await new Promise((r) => setTimeout(r, 140));
+      await new Promise((r) => setTimeout(r, 90));
 
-      let chunks: string[] = [];
+      let fullLocalText = '';
       if (breakdown.hasPII) {
-        chunks = [
-          "[Gemini Nano On-Device · Privacy Shield Active] ",
-          `Sensitive data detected (${breakdown.detectedPIITypes.join(', ')}). `,
-          "Task isolated in local memory with redacted credentials to ensure strict confidentiality. ",
-          `Processed secure summary: "${safePrompt.length > 70 ? safePrompt.slice(0, 70) + '...' : safePrompt}".`
-        ];
+        fullLocalText = [
+          `[Gemini Nano On-Device · Privacy Shield Active]`,
+          `Datos sensibles detectados (${breakdown.detectedPIITypes.join(', ')}) y protegidos en memoria local.`,
+          `Resumen seguro: "${safePrompt}"`
+        ].join('\n');
+      } else if (/json|tareas|tasks|nota|note|resumen|summary/.test(safePrompt.toLowerCase())) {
+        fullLocalText = JSON.stringify(
+          {
+            runtime: 'gemini-nano-on-device',
+            networkTokensUsed: 0,
+            summary: safePrompt.length > 90 ? safePrompt.slice(0, 90) + '...' : safePrompt,
+            tasks: [
+              { title: 'Revisar puntos clave extraídos localmente', priority: 'alta' },
+              { title: 'Sincronizar resultado en historial local', priority: 'media' }
+            ]
+          },
+          null,
+          2
+        );
       } else {
-        chunks = [
-          "[Gemini Nano On-Device] ",
-          `Processing prompt on local device hardware with Gemini Nano. `,
-          `Inference completed successfully with 0 network tokens: "${safePrompt.length > 60 ? safePrompt.slice(0, 60) + '...' : safePrompt}".`
-        ];
+        fullLocalText = [
+          `[Gemini Nano On-Device · 0 tokens de red]`,
+          `Respuesta local para: "${safePrompt}"`,
+          `- Ejecución completada en memoria del navegador con baja latencia.`
+        ].join('\n');
       }
 
-      for (const ch of chunks) {
-        await new Promise((r) => setTimeout(r, 90));
+      const step = Math.max(20, Math.ceil(fullLocalText.length / 4));
+      for (let i = 0; i < fullLocalText.length; i += step) {
+        const ch = fullLocalText.slice(i, i + step);
+        await new Promise((r) => setTimeout(r, 40));
         textOutput += ch;
         onToken?.(ch);
       }

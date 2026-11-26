@@ -1,6 +1,7 @@
 import React from 'react';
-import { Compass, Github, ExternalLink, ShieldCheck, Cpu, Cloud, Terminal } from 'lucide-react';
+import { ExternalLink, ShieldCheck, Cpu, Cloud, Terminal } from 'lucide-react';
 import { Language, translations } from '../i18n';
+import { HydraLogo } from './HydraLogo';
 
 interface FooterProps {
   onNavigate: (tab: 'home' | 'dashboard' | 'docs' | 'api' | 'security') => void;
@@ -11,8 +12,8 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang }) => {
   const t = translations[lang];
 
   return (
-    <footer className="glass-panel" style={{ marginTop: '40px', padding: '48px 40px 32px', borderTop: '1px solid var(--border-subtle)' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '40px', marginBottom: '40px' }}>
+    <footer className="glass-panel" style={{ marginTop: '24px', padding: '28px 28px 20px', borderTop: '1px solid var(--border-subtle)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 210px), 1fr))', gap: '24px', marginBottom: '22px' }}>
         
         {/* Columna 1: Brand & Misión */}
         <div>
@@ -20,12 +21,13 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang }) => {
             <div style={{ 
               width: '38px', height: '38px', borderRadius: '10px', 
               background: 'linear-gradient(135deg, var(--primary-accent), var(--accent-cyan))', 
-              display: 'flex', alignItems: 'center', justifyContent: 'center' 
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#ffffff'
             }}>
-              <Compass size={20} color="#ffffff" />
+              <HydraLogo size={24} color="#ffffff" />
             </div>
             <div>
-              <div style={{ fontSize: '18px', fontWeight: '900', letterSpacing: '0.14em', color: '#fff', lineHeight: '1.1' }}>
+              <div style={{ fontSize: '18px', fontWeight: '900', letterSpacing: '0.14em', color: 'var(--text-main)', lineHeight: '1.1' }}>
                 HYDRA
               </div>
               <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.22em', color: 'var(--text-muted)' }}>
@@ -37,7 +39,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang }) => {
             {t.brand_descriptor}
           </p>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--accent-emerald)', padding: '4px 10px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
-            <ShieldCheck size={13} /> Licencia Open Source Apache-2.0
+            <ShieldCheck size={13} /> {lang === 'es' ? 'Licencia Open Source Apache-2.0' : 'Apache-2.0 Open Source License'}
           </div>
         </div>
 
@@ -123,13 +125,24 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang }) => {
             <a 
               href="https://hydra-agent.vercel.app/" 
               target="_blank" 
-              rel="noreferrer"
+              rel="noopener noreferrer"
               style={{ 
                 display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '600',
                 color: 'var(--primary-glow)', textDecoration: 'none'
               }}
             >
               hydra-agent.vercel.app <ExternalLink size={12} />
+            </a>
+            <a 
+              href="https://github.com/jammar24/Hydra-Agent" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ 
+                display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '600',
+                color: 'var(--text-muted)', textDecoration: 'none'
+              }}
+            >
+              github.com/jammar24/Hydra-Agent <ExternalLink size={12} />
             </a>
           </div>
         </div>
@@ -139,7 +152,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang }) => {
       {/* Barra Inferior de Copyright */}
       <div style={{ 
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px',
-        borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '24px', fontSize: '12px', color: 'var(--text-dim)' 
+        borderTop: '1px solid var(--border-subtle)', paddingTop: '24px', fontSize: '12px', color: 'var(--text-dim)' 
       }}>
         <div>
           {t.footer_copy_left}

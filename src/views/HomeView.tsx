@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   ArrowRight, ShieldCheck, Cpu, Cloud, Zap, 
-  Sparkles, BookOpen, Code2, RefreshCw, Key, Layers
+  Sparkles, BookOpen, Code2, RefreshCw, Key, Layers, ExternalLink
 } from 'lucide-react';
 import { Language, translations } from '../i18n';
 
@@ -16,11 +16,11 @@ export const HomeView: React.FC<HomeViewProps> = ({ onGoToDashboard, onGoToDocs,
   const t = translations[lang];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '44px', padding: '10px 0 30px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', padding: '4px 0 16px' }}>
       
       {/* ─── HERO PRINCIPAL ─── */}
-      <section className="glass-panel" style={{ 
-        padding: '64px 44px', textAlign: 'center', position: 'relative', overflow: 'hidden'
+      <section className="glass-panel hero-panel" style={{ 
+        padding: '40px 28px', textAlign: 'center', position: 'relative', overflow: 'hidden'
       }}>
         
         <div style={{ 
@@ -72,11 +72,10 @@ export const HomeView: React.FC<HomeViewProps> = ({ onGoToDashboard, onGoToDocs,
 
           <button
             onClick={onGoToDocs}
+            className="btn-ghost"
             style={{
-              background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-main)',
-              border: '1px solid var(--border-subtle)', padding: '15px 26px', borderRadius: '10px',
-              fontSize: '15px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
-              transition: 'background 0.2s'
+              padding: '15px 26px', borderRadius: '10px',
+              fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px'
             }}
           >
             <BookOpen size={18} color="var(--accent-cyan)" /> {t.hero_btn_docs}
@@ -84,11 +83,10 @@ export const HomeView: React.FC<HomeViewProps> = ({ onGoToDashboard, onGoToDocs,
 
           <button
             onClick={onGoToAPI}
+            className="btn-ghost"
             style={{
-              background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-main)',
-              border: '1px solid var(--border-subtle)', padding: '15px 26px', borderRadius: '10px',
-              fontSize: '15px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
-              transition: 'background 0.2s'
+              padding: '15px 26px', borderRadius: '10px',
+              fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px'
             }}
           >
             <Code2 size={18} color="var(--primary-glow)" /> {t.hero_btn_api}
@@ -185,25 +183,91 @@ export const HomeView: React.FC<HomeViewProps> = ({ onGoToDashboard, onGoToDocs,
       </section>
 
       {/* ─── BENCHMARK STRIP MEDIDO ─── */}
-      <section className="glass-panel" style={{ padding: '32px 40px', display: 'flex', justifyContent: 'space-around', alignItems: 'center', flexWrap: 'wrap', gap: '24px' }}>
+      <section className="glass-panel" style={{ padding: '20px 28px', display: 'flex', justifyContent: 'space-around', alignItems: 'center', flexWrap: 'wrap', gap: '18px' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '36px', fontWeight: '900', color: 'var(--accent-emerald)' }}>{t.stat_savings_val}</div>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '4px' }}>
             {t.stat_savings_label}
           </div>
         </div>
-        <div style={{ width: '1px', height: '50px', background: 'var(--border-subtle)' }} />
+        <div className="stat-divider" style={{ width: '1px', height: '50px', background: 'var(--border-subtle)' }} />
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '36px', fontWeight: '900', color: 'var(--accent-cyan)' }}>{t.stat_latency_val}</div>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '4px' }}>
             {t.stat_latency_label}
           </div>
         </div>
-        <div style={{ width: '1px', height: '50px', background: 'var(--border-subtle)' }} />
+        <div className="stat-divider" style={{ width: '1px', height: '50px', background: 'var(--border-subtle)' }} />
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '36px', fontWeight: '900', color: 'var(--primary-glow)' }}>{t.stat_resilience_val}</div>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '4px' }}>
             {t.stat_resilience_label}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── TEAM ─── */}
+      <section>
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <h2 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-main)' }}>
+            {t.team_section_title}
+          </h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>
+            {t.team_section_sub}
+          </p>
+        </div>
+
+        <div className="glass-panel" style={{
+          maxWidth: '640px',
+          margin: '0 auto',
+          padding: '20px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '20px',
+          flexWrap: 'wrap'
+        }}>
+          <img
+            src="/team-jamar.jpg"
+            alt="Jamar Masias"
+            style={{
+              width: '104px',
+              height: '104px',
+              borderRadius: '50%',
+              objectFit: 'cover',
+              objectPosition: '50% 18%',
+              border: '2px solid var(--border-mid)',
+              boxShadow: 'var(--shadow-card)',
+              flexShrink: 0
+            }}
+          />
+          <div style={{ flex: 1, minWidth: '220px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '4px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-main)' }}>
+                Jamar Masias
+              </h3>
+              <span className="badge badge-blue">
+                {t.team_role}
+              </span>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: '1.6', marginBottom: '12px' }}>
+              {t.team_bio}
+            </p>
+            <a
+              href="https://github.com/jammar24/Hydra-Agent"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '12px',
+                fontWeight: '700',
+                color: 'var(--primary-glow)',
+                textDecoration: 'none'
+              }}
+            >
+              github.com/jammar24/Hydra-Agent <ExternalLink size={12} />
+            </a>
           </div>
         </div>
       </section>

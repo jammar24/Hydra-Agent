@@ -11,6 +11,7 @@ export interface ImportMetaEnv {
   readonly VITE_DEFAULT_CLOUD_MODEL?: string;
   readonly VITE_LOCAL_MODEL_MAX_TOKENS?: string;
   readonly VITE_CLOUD_TIMEOUT_MS?: string;
+  readonly VITE_GEMINI_API_KEY?: string;
 }
 
 export interface ImportMeta {

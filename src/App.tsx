@@ -9,7 +9,8 @@ import { ApiView } from './views/ApiView';
 import { SecurityView } from './views/SecurityView';
 import { AuthModal, UserProfile } from './components/AuthModal';
 import { Footer } from './components/Footer';
-import { logoutUser, loginAnonymously, subscribeToAuthChanges } from './firebase';
+import { HydraLogo } from './components/HydraLogo';
+import { logoutUser, loginWithGoogle, subscribeToAuthChanges, saveAuditToFirestore, loadAuditFromFirestore } from './firebase';
 import { Language, translations } from './i18n';
 import { 
   Zap, Cloud, Wifi, WifiOff, Cpu, Activity, 
@@ -17,7 +18,7 @@ import {
   Sparkles, Terminal, RefreshCw, Compass, FileSpreadsheet,
   FileCode, Play, Lock, Home, BookOpen, Code2, LogIn, LogOut,
   Shield, Sun, Moon, Globe, Check, AlertCircle, DollarSign,
-  TrendingDown, Gauge
+  TrendingDown, Gauge, Copy, Trash2
 } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -49,6 +50,9 @@ export const App: React.FC = () => {
   const [isBenchmarking, setIsBenchmarking] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const [activeDecision, setActiveDecision] = useState<RoutingDecision | null>(null);
+  const [latestResult, setLatestResult] = useState<WorkerExecutionResult | null>(null);
+  const [copiedResponse, setCopiedResponse] = useState(false);
+  const [historyFilter, setHistoryFilter] = useState<'all' | 'local' | 'cloud' | 'cascade'>('all');
 
   // Sync theme
   useEffect(() => {
@@ -125,6 +129,78 @@ export const App: React.FC = () => {
     setIsNativeHardware(orchestrator.getLocalWorker().getStatus().isNative);
   };
 
+  // Load persisted history & metrics per user
+  useEffect(() => {
+    if (!user?.uid) return;
+    const hKey = `hydra_history_${user.uid}`;
+    const mKey = `hydra_metrics_${user.uid}`;
+    try {
+      const savedH = localStorage.getItem(hKey);
+      const savedM = localStorage.getItem(mKey);
+      if (savedH) {
+        const parsedH: WorkerExecutionResult[] = JSON.parse(savedH);
+        setHistory(parsedH);
+        if (parsedH.length > 0) setLatestResult(parsedH[0]);
+      }
+      if (savedM) {
+        setMetrics(JSON.parse(savedM));
+      }
+    } catch {
+      // Ignore corrupted local storage
+    }
+
+    loadAuditFromFirestore(user.uid).then((remoteDocs) => {
+      if (remoteDocs.length > 0) {
+        setHistory((prev) => {
+          const existingIds = new Set(prev.map((p) => p.taskId));
+          const merged = [...prev, ...remoteDocs.filter((d) => d?.taskId && !existingIds.has(d.taskId))];
+          merged.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+          return merged.slice(0, 50);
+        });
+      }
+    });
+  }, [user?.uid]);
+
+  const persistHistoryItem = (result: WorkerExecutionResult, updatedMetrics: OrchestratorMetric[]) => {
+    const safeResult: WorkerExecutionResult = {
+      ...result,
+      content: RoutingEvaluator.redactPII(result.content),
+      routerReason: RoutingEvaluator.redactPII(result.routerReason),
+      summary: result.summary ? RoutingEvaluator.redactPII(result.summary) : undefined
+    };
+
+    setLatestResult(safeResult);
+    setHistory((prev) => {
+      const next = [safeResult, ...prev].slice(0, 50);
+      if (user?.uid) {
+        try {
+          localStorage.setItem(`hydra_history_${user.uid}`, JSON.stringify(next));
+          localStorage.setItem(`hydra_metrics_${user.uid}`, JSON.stringify(updatedMetrics.slice(-100)));
+        } catch {
+          // Ignore storage quota errors
+        }
+        saveAuditToFirestore(user.uid, safeResult as unknown as Record<string, unknown>);
+      }
+      return next;
+    });
+  };
+
+  const handleClearHistory = () => {
+    setHistory([]);
+    setMetrics([]);
+    setLatestResult(null);
+    if (user?.uid) {
+      localStorage.removeItem(`hydra_history_${user.uid}`);
+      localStorage.removeItem(`hydra_metrics_${user.uid}`);
+    }
+  };
+
+  const handleCopyResponse = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedResponse(true);
+    setTimeout(() => setCopiedResponse(false), 1800);
+  };
+
   const handleSend = async (e?: React.FormEvent, customPrompt?: string) => {
     if (e) e.preventDefault();
     const promptToSend = customPrompt !== undefined ? customPrompt : prompt;
@@ -146,10 +222,11 @@ export const App: React.FC = () => {
       }
     );
 
+    const updatedMetrics = orchestrator.getMetrics();
     if (outcome.result) {
-      setHistory((prev) => [outcome.result!, ...prev]);
+      persistHistoryItem(outcome.result, updatedMetrics);
     }
-    setMetrics(orchestrator.getMetrics());
+    setMetrics(updatedMetrics);
     setQueueCount(orchestrator.getQueueLength());
 
     setPrompt('');
@@ -161,32 +238,51 @@ export const App: React.FC = () => {
     if (isBenchmarking || isProcessing) return;
     setIsBenchmarking(true);
 
-    const benchmarkPrompts = [
-      'Reunión de sync: revisar tareas pendientes del sprint',
-      'Checklist de entrega para versión v1.0.0',
-      'Nota rápida: llamar al cliente sobre actualización de servicio',
-      'Resumir nota de standup matutino',
-      'Recordatorio: verificar logs del servidor a las 3pm',
-      'Anotar feedback de usuario sobre interfaz oscura',
-      'Lista de compras de oficina para el equipo',
-      'Extraer ítems de acción de la llamada con diseño',
-      'Actualizar documentación interna de bienvenida',
-      'Confirmar asistencia para el demo del hackathon',
-      'Análisis profundo y arquitectura de microservicios distribuida con alta concurrencia y sharding de base de datos',
-      'Diseño formal de protocolo de autenticación federada con tokens JWT asimétricos y validación App Check',
-      'Comparativa técnica exhaustiva entre arquitecturas monolíticas y serverless con estimación de costos',
-      'Algoritmo matemático de balanceo dinámico de carga con ventana deslizante y SLA estricto',
-      'Refactorización integral de capa de persistencia offline con reconciliación de conflictos en Firestore'
-    ];
+    const benchmarkPrompts = lang === 'es'
+      ? [
+          'Reunión de sync: revisar tareas pendientes del sprint',
+          'Checklist de entrega para versión v1.0.0',
+          'Nota rápida: llamar al cliente sobre actualización de servicio',
+          'Resumir nota de standup matutino',
+          'Recordatorio: verificar logs del servidor a las 3pm',
+          'Anotar feedback de usuario sobre interfaz oscura',
+          'Lista de compras de oficina para el equipo',
+          'Extraer ítems de acción de la llamada con diseño',
+          'Actualizar documentación interna de bienvenida',
+          'Confirmar asistencia para el demo del sistema',
+          'Análisis profundo y arquitectura de microservicios distribuida con alta concurrencia y sharding de base de datos',
+          'Diseño formal de protocolo de autenticación federada con tokens JWT asimétricos y validación App Check',
+          'Comparativa técnica exhaustiva entre arquitecturas monolíticas y serverless con estimación de costos',
+          'Algoritmo matemático de balanceo dinámico de carga con ventana deslizante y SLA estricto',
+          'Refactorización integral de capa de persistencia offline con reconciliación de conflictos en Firestore'
+        ]
+      : [
+          'Sync meeting: review pending sprint action items',
+          'Release checklist for version v1.0.0',
+          'Quick note: call client regarding service update',
+          'Summarize morning standup note',
+          'Reminder: check server logs at 3pm',
+          'Log user feedback on dark mode interface',
+          'Office supply list for the engineering team',
+          'Extract action items from design review call',
+          'Update internal onboarding documentation',
+          'Confirm attendance for system demo',
+          'Deep analysis and distributed microservices architecture with high concurrency and database sharding',
+          'Formal design of federated authentication protocol with asymmetric JWT tokens and App Check validation',
+          'Thorough technical comparison between monolithic and serverless architectures with cost estimation',
+          'Mathematical dynamic load balancing algorithm with sliding window and strict SLA',
+          'Full refactor of offline persistence layer with conflict reconciliation in Firestore'
+        ];
 
     for (const p of benchmarkPrompts) {
       const outcome = await orchestrator.dispatch(p, isOnline, user ? user.uid : 'benchmark_user');
+      const updatedMetrics = orchestrator.getMetrics();
       if (outcome.result) {
-        setHistory((prev) => [outcome.result!, ...prev]);
+        persistHistoryItem(outcome.result, updatedMetrics);
       }
-      setMetrics(orchestrator.getMetrics());
+      setMetrics(updatedMetrics);
       setQueueCount(orchestrator.getQueueLength());
-      await new Promise((r) => setTimeout(r, 60));
+      await new Promise((r) => setTimeout(r, 40));
     }
 
     setIsBenchmarking(false);
@@ -197,18 +293,18 @@ export const App: React.FC = () => {
     setUser(null);
   };
 
-  const handleQuickGuestLogin = async () => {
+  const handleQuickGoogleLogin = async () => {
     setIsAnonLoading(true);
     try {
-      const fbUser = await loginAnonymously();
+      const fbUser = await loginWithGoogle();
       setUser({
         uid: fbUser.uid,
-        email: null,
-        displayName: lang === 'es' ? 'Invitado Anónimo' : 'Anonymous Guest',
-        isAnonymous: true
+        email: fbUser.email,
+        displayName: fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0] : 'Google User'),
+        isAnonymous: false
       });
     } catch (e) {
-      console.warn('Error en acceso anónimo:', e);
+      console.warn('Google login error:', e);
     } finally {
       setIsAnonLoading(false);
     }
@@ -220,8 +316,9 @@ export const App: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `hybridagent-audit-${Date.now()}.json`;
+    a.download = `hydra-audit-${Date.now()}.json`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleExportCSV = () => {
@@ -230,8 +327,9 @@ export const App: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `hybridagent-audit-${Date.now()}.csv`;
+    a.download = `hydra-audit-${Date.now()}.csv`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   const totalCalls = metrics.length;
@@ -245,142 +343,175 @@ export const App: React.FC = () => {
       ? Math.round(metrics.reduce((acc, m) => acc + m.latencyMs, 0) / totalCalls)
       : 0;
 
+  /* Sidebar nav items */
+  const navItems = [
+    { id: 'home',      label: t.nav_home,      icon: <Home size={17} />,     requiresAuth: false },
+    { id: 'dashboard', label: t.nav_dashboard,  icon: <Terminal size={17} />, requiresAuth: false },
+    { id: 'docs',      label: t.nav_docs,       icon: <BookOpen size={17} />, requiresAuth: false },
+    { id: 'api',       label: t.nav_api,        icon: <Code2 size={17} />,    requiresAuth: false },
+    { id: 'security',  label: t.nav_security,   icon: <Shield size={17} />,   requiresAuth: false },
+  ];
+
+  /* User initials for avatar */
+  const userInitial = user?.displayName ? user.displayName[0].toUpperCase() : '?';
+
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '24px 28px', minHeight: '100vh', display: 'flex', flexDirection: 'column', gap: '26px' }}>
-      
-      {/* ─── NAVBAR ELEGANTE Y MADURO ─── */}
-      <nav className="glass-panel" style={{ padding: '14px 26px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-        
+    <div className="app-shell">
+
+      {/* ─── SIDEBAR ─── */}
+      <aside className="sidebar">
+
         {/* Brand */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => navigateTo('home')}>
-          <div style={{ 
-            width: '40px', height: '40px', borderRadius: '10px', 
-            background: 'linear-gradient(135deg, var(--primary-accent), #4f46e5)', 
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 14px -2px rgba(99, 102, 241, 0.35)'
-          }}>
-            <Compass size={22} color="#ffffff" />
+        <div className="sidebar-brand" onClick={() => navigateTo('home')}>
+          <div className="brand-icon">
+            <HydraLogo size={24} color="#ffffff" />
           </div>
-          <div>
-            <div style={{ fontSize: '19px', fontWeight: '900', letterSpacing: '0.14em', color: 'var(--text-main)', lineHeight: '1.1' }}>
-              HYDRA
-            </div>
-            <div style={{ fontSize: '10.5px', fontWeight: '700', letterSpacing: '0.22em', color: 'var(--text-dim)' }}>
-              {lang === 'es' ? 'AGENT IA' : 'AGENT AI'}
-            </div>
+          <div className="brand-text">
+            <div className="brand-name">HYDRA</div>
+            <div className="brand-sub">{lang === 'es' ? 'AGENT IA' : 'AGENT AI'}</div>
           </div>
         </div>
 
-        {/* Links de Navegación */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          {[
-            { id: 'home', label: t.nav_home, icon: <Home size={15} /> },
-            { id: 'dashboard', label: t.nav_dashboard, icon: <Terminal size={15} />, requiresAuth: true },
-            { id: 'docs', label: t.nav_docs, icon: <BookOpen size={15} /> },
-            { id: 'api', label: t.nav_api, icon: <Code2 size={15} /> },
-            { id: 'security', label: t.nav_security, icon: <Shield size={15} /> }
-          ].map((item) => (
+        {/* Nav links */}
+        <nav className="sidebar-nav">
+          {navItems.map((item) => (
             <button
               key={item.id}
+              className={`sidebar-link${currentRoute === item.id ? ' active' : ''}`}
               onClick={() => navigateTo(item.id as AppRoute)}
-              style={{
-                background: currentRoute === item.id ? 'rgba(99, 102, 241, 0.12)' : 'transparent',
-                color: currentRoute === item.id ? 'var(--primary-glow)' : 'var(--text-muted)',
-                border: currentRoute === item.id ? '1px solid rgba(99, 102, 241, 0.25)' : '1px solid transparent',
-                padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
-                transition: 'all 0.15s ease'
-              }}
             >
-              {item.icon} {item.label}
-              {item.requiresAuth && !user && (
-                <Lock size={11} style={{ opacity: 0.6, marginLeft: '2px' }} />
-              )}
+              <span className="nav-icon">{item.icon}</span>
+              <span className="link-label">
+                {item.label}
+                {item.id === 'dashboard' && !user && (
+                  <Lock size={10} style={{ marginLeft: 4, opacity: 0.5 }} />
+                )}
+              </span>
             </button>
           ))}
-        </div>
+        </nav>
 
-        {/* Acciones: Idioma, Tema y Auth */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          
-          {/* Toggle de Idioma ES / EN */}
-          <button
-            onClick={() => setLang(lang === 'es' ? 'en' : 'es')}
-            style={{
-              background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-subtle)',
-              color: 'var(--text-main)', padding: '7px 11px', borderRadius: '8px',
-              fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
-            }}
-            title="Cambiar Idioma / Switch Language"
-          >
-            <Globe size={13} /> {lang.toUpperCase()}
-          </button>
+        {/* Footer: actions + user */}
+        <div className="sidebar-footer">
+          <div className="sidebar-actions">
+            {/* Language toggle */}
+            <button
+              className="btn-icon"
+              onClick={() => setLang(lang === 'es' ? 'en' : 'es')}
+              title={lang === 'es' ? 'Switch to English' : 'Cambiar a Español'}
+              style={{ flex: 1, gap: 6, fontSize: 11, fontWeight: 700 }}
+            >
+              <Globe size={13} /> <span className="link-label">{lang.toUpperCase()}</span>
+            </button>
+            {/* Theme toggle */}
+            <button
+              className="btn-icon"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            >
+              {theme === 'dark'
+                ? <Sun size={14} color="var(--accent-amber)" />
+                : <Moon size={14} color="var(--accent-primary)" />}
+            </button>
+          </div>
 
-          {/* Toggle de Tema Light / Dark */}
-          <button
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            style={{
-              background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-subtle)',
-              color: 'var(--text-main)', padding: '7px 10px', borderRadius: '8px',
-              fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}
-            title="Modo Claro / Modo Oscuro"
-          >
-            {theme === 'dark' ? <Sun size={14} color="var(--accent-amber)" /> : <Moon size={14} color="var(--primary-accent)" />}
-          </button>
-
-          {/* Auth Button */}
           {user ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingLeft: '4px' }}>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-main)' }}>{user.displayName}</div>
-                <div style={{ fontSize: '10px', color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-emerald)' }}></span>
+            <div className="sidebar-user">
+              <div className="avatar">{userInitial}</div>
+              <div className="user-info" style={{ flex: 1, minWidth: 0 }}>
+                <div className="user-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {user.displayName}
+                </div>
+                <div className="user-status">
+                  <span className="dot dot-green" />
                   {t.nav_auth_connected}
                 </div>
               </div>
               <button
+                className="btn-icon"
                 onClick={handleLogout}
-                style={{ 
-                  background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-subtle)', 
-                  color: 'var(--text-dim)', padding: '7px', borderRadius: '8px', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}
                 title={t.nav_logout_title}
+                style={{ flexShrink: 0 }}
               >
                 <LogOut size={13} />
               </button>
             </div>
           ) : (
             <button
-              onClick={() => setIsAuthOpen(true)}
               className="btn-primary"
-              style={{ padding: '8px 16px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => setIsAuthOpen(true)}
+              style={{ width: '100%', padding: '9px 12px', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
             >
-              <LogIn size={13} /> {t.nav_login}
+              <LogIn size={13} /> <span className="link-label">{t.nav_login}</span>
             </button>
           )}
-
         </div>
-      </nav>
+      </aside>
 
-      {/* ─── VISTAS ACTIVAS ─── */}
-      {currentRoute === 'home' && (
-        <HomeView
-          onGoToDashboard={() => navigateTo('dashboard')}
-          onGoToDocs={() => navigateTo('docs')}
-          onGoToAPI={() => navigateTo('api')}
-          lang={lang}
-        />
-      )}
+      {/* ─── MAIN CONTENT ─── */}
+      <div className="main-content">
+        {/* Mobile Topbar (<= 640px) */}
+        <header className="mobile-topbar">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => navigateTo('home')}>
+            <HydraLogo size={24} color="var(--accent-primary)" />
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '900', letterSpacing: '0.12em', color: 'var(--text-main)', lineHeight: 1 }}>
+                HYDRA
+              </div>
+              <div style={{ fontSize: '8.5px', fontWeight: '700', letterSpacing: '0.18em', color: 'var(--text-dim)' }}>
+                {lang === 'es' ? 'AGENT IA' : 'AGENT AI'}
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button
+              className="btn-icon"
+              onClick={() => setLang(lang === 'es' ? 'en' : 'es')}
+              style={{ fontSize: '11px', fontWeight: '700', padding: '6px 8px', gap: '4px' }}
+              title={lang === 'es' ? 'Switch to English' : 'Cambiar a Español'}
+            >
+              <Globe size={12} /> {lang.toUpperCase()}
+            </button>
+            <button
+              className="btn-icon"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            >
+              {theme === 'dark'
+                ? <Sun size={14} color="var(--accent-amber)" />
+                : <Moon size={14} color="var(--accent-primary)" />}
+            </button>
+            {user ? (
+              <button className="btn-icon" onClick={handleLogout} title={t.nav_logout_title}>
+                <LogOut size={14} />
+              </button>
+            ) : (
+              <button className="btn-primary" onClick={() => setIsAuthOpen(true)} style={{ padding: '6px 10px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <LogIn size={12} />
+              </button>
+            )}
+          </div>
+        </header>
 
-      {currentRoute === 'docs' && <DocsView lang={lang} />}
+        <div className="page-wrapper">
 
-      {currentRoute === 'api' && <ApiView lang={lang} />}
+        {/* ─── ACTIVE VIEWS ─── */}
+        {currentRoute === 'home' && (
+          <HomeView
+            onGoToDashboard={() => navigateTo('dashboard')}
+            onGoToDocs={() => navigateTo('docs')}
+            onGoToAPI={() => navigateTo('api')}
+            lang={lang}
+          />
+        )}
 
-      {currentRoute === 'security' && <SecurityView lang={lang} />}
+        {currentRoute === 'docs' && <DocsView lang={lang} />}
 
-      {currentRoute === 'dashboard' && (
+        {currentRoute === 'api' && <ApiView lang={lang} />}
+
+        {currentRoute === 'security' && <SecurityView lang={lang} />}
+
+        {currentRoute === 'dashboard' && (
         <>
           {/* CONTROL DE ACCESO: EL USUARIO DEBE ESTAR LOGUEADO PARA EL DASHBOARD */}
           {!user ? (
@@ -407,26 +538,31 @@ export const App: React.FC = () => {
 
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center', width: '100%', marginTop: '6px' }}>
                 <button
+                  onClick={handleQuickGoogleLogin}
+                  disabled={isAnonLoading}
+                  className="btn-ghost"
+                  style={{ 
+                    color: 'var(--text-main)', padding: '12px 20px', borderRadius: '10px', 
+                    fontSize: '13px', fontWeight: '600', cursor: isAnonLoading ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '8px'
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z"/>
+                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24Z"/>
+                    <path fill="#FBBC05" d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14Z"/>
+                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96Z"/>
+                  </svg>
+                  {t.auth_btn_google}
+                </button>
+
+                <button
                   onClick={() => setIsAuthOpen(true)}
                   className="btn-primary"
                   style={{ padding: '12px 24px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
                   <LogIn size={15} />
-                  {lang === 'es' ? 'Iniciar Sesión / Registrarse' : 'Sign In / Register'}
-                </button>
-
-                <button
-                  onClick={handleQuickGuestLogin}
-                  disabled={isAnonLoading}
-                  style={{ 
-                    background: 'rgba(255, 255, 255, 0.04)', border: '1px solid var(--border-subtle)', 
-                    color: 'var(--text-main)', padding: '12px 20px', borderRadius: '10px', 
-                    fontSize: '13px', fontWeight: '600', cursor: isAnonLoading ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s'
-                  }}
-                >
-                  {isAnonLoading ? <RefreshCw size={14} className="pulse-badge" /> : <Sparkles size={14} color="var(--accent-cyan)" />}
-                  {lang === 'es' ? 'Acceso Rápido como Invitado' : 'Quick Guest Access'}
+                  {t.auth_gate_sign_in}
                 </button>
               </div>
 
@@ -443,64 +579,54 @@ export const App: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
-              
-              {/* Status Strip Maduro */}
-              <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
-                
-                {/* Red */}
-                <div className="glass-panel" style={{ padding: '18px 20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: '700' }}>
-                      {t.status_net_title}
-                    </span>
-                    {isOnline ? <Wifi size={16} color="var(--accent-emerald)" /> : <WifiOff size={16} color="var(--accent-rose)" />}
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontSize: '14px', fontWeight: '700', color: isOnline ? 'var(--accent-emerald)' : 'var(--accent-rose)' }}>
-                        {isOnline ? t.status_online : t.status_offline}
-                      </div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                        {isOnline ? t.status_synced : t.status_queued}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setIsOnline(!isOnline)}
-                      style={{
-                        background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border-subtle)',
-                        color: 'var(--text-main)', padding: '5px 10px', borderRadius: '6px',
-                        fontSize: '11px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px'
-                      }}
-                    >
-                      <RefreshCw size={11} />
-                      {t.btn_simulate_net}
-                    </button>
-                  </div>
-                </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-                {/* Gemini Nano */}
-                <div className="glass-panel" style={{ padding: '18px 20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              {/* Dashboard Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>
+                    {t.dash_subtitle}
+                  </div>
+                  <h1 className="section-title" style={{ fontSize: '26px', marginTop: '2px' }}>
+                    {t.dash_title}
+                  </h1>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span className={isOnline ? 'badge badge-green' : 'badge badge-rose'}>
+                    <span className={isOnline ? 'dot dot-green' : 'dot dot-rose'} />
+                    {isOnline ? t.status_online : t.status_offline}
+                  </span>
+                  <span className="badge badge-blue">
+                    <DollarSign size={11} /> ${totalCostSaved.toFixed(5)} {t.factor_cost_saved}
+                  </span>
+                </div>
+              </div>
+
+              {/* 4 Heads Status Strip (1 -> 2 -> 3 -> 4) */}
+              <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '14px' }}>
+
+                {/* Head 1: Gemini Nano */}
+                <div className="glass-panel" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: '700' }}>
                       {t.status_nano_title}
                     </span>
                     <Cpu size={16} color={isLocalReady ? 'var(--accent-emerald)' : 'var(--accent-amber)'} />
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: '14px', fontWeight: '700', color: isLocalReady ? 'var(--accent-emerald)' : 'var(--accent-amber)' }}>
                         {isLocalReady ? (isNativeHardware ? t.status_nano_native : t.status_nano_ready) : isDownloading ? `${t.status_nano_downloading}${downloadProgress}%` : t.status_nano_inactive}
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                        {isLocalReady ? 'Latencia p95 < 280 ms' : 'Chrome Prompt API'}
+                        {isLocalReady ? t.nano_latency_hint : 'Chrome Prompt API'}
                       </div>
                     </div>
                     {!isLocalReady && !isDownloading && (
                       <button
                         onClick={handleDownloadModel}
                         className="btn-primary"
-                        style={{ padding: '5px 12px', fontSize: '11px' }}
+                        style={{ padding: '6px 12px', fontSize: '11px', whiteSpace: 'nowrap', flexShrink: 0 }}
                       >
                         {t.btn_activate_nano}
                       </button>
@@ -508,9 +634,9 @@ export const App: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Estrategia */}
-                <div className="glass-panel" style={{ padding: '18px 20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                {/* Head 2: Cloud & Strategy */}
+                <div className="glass-panel" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: '700' }}>
                       {t.status_strategy_title}
                     </span>
@@ -521,7 +647,7 @@ export const App: React.FC = () => {
                     onChange={(e) => setMode(e.target.value as RoutingMode)}
                     style={{
                       width: '100%', background: 'var(--input-bg)', color: 'var(--text-main)',
-                      border: '1px solid var(--border-subtle)', padding: '6px 10px', borderRadius: '8px',
+                      border: '1px solid var(--border-subtle)', padding: '7px 10px', borderRadius: '8px',
                       fontSize: '12px', outline: 'none'
                     }}
                   >
@@ -532,84 +658,121 @@ export const App: React.FC = () => {
                   </select>
                 </div>
 
-                {/* Seguridad */}
-                <div className="glass-panel" style={{ padding: '18px 20px', cursor: 'pointer' }} onClick={() => navigateTo('security')}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                {/* Head 3: Privacy Shield */}
+                <div className="glass-panel" style={{ padding: '18px 20px', cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '10px' }} onClick={() => navigateTo('security')}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: '700' }}>
                       {t.status_sec_title}
                     </span>
                     <ShieldCheck size={16} color="var(--accent-emerald)" />
                   </div>
-                  <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--accent-emerald)' }}>
-                    {t.status_sec_name}
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--accent-emerald)' }}>
+                      {t.status_sec_name}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                      {t.status_sec_desc}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                    {t.status_sec_desc}
+                </div>
+
+                {/* Head 4: Network & Offline Sync */}
+                <div className="glass-panel" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: '700' }}>
+                      {t.status_net_title}
+                    </span>
+                    {isOnline ? <Wifi size={16} color="var(--accent-emerald)" /> : <WifiOff size={16} color="var(--accent-rose)" />}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '14px', fontWeight: '700', color: isOnline ? 'var(--accent-emerald)' : 'var(--accent-rose)' }}>
+                        {isOnline ? t.status_online : t.status_offline}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                        {isOnline ? t.status_synced : t.status_queued}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setIsOnline(!isOnline)}
+                      className="btn-ghost"
+                      style={{
+                        color: 'var(--text-main)', padding: '6px 10px', borderRadius: '6px',
+                        fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap', flexShrink: 0
+                      }}
+                    >
+                      <RefreshCw size={11} />
+                      {t.btn_simulate_net}
+                    </button>
                   </div>
                 </div>
 
               </section>
 
-              {/* Métricas Maduras */}
-              <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px' }}>
+              {/* Metrics Row */}
+              <section className="metric-row">
                 
-                <div className="glass-panel" style={{ padding: '18px 20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '600' }}>
-                      {t.metric_savings_title}
-                    </span>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-emerald)' }}></span>
+                <div className="metric-card">
+                  <div className="mc-label">
+                    <span>{t.metric_savings_title}</span>
+                    <span className="dot dot-green" />
                   </div>
-                  <div style={{ fontSize: '30px', fontWeight: '800', color: 'var(--accent-emerald)', marginTop: '4px' }}>
+                  <div className="mc-value" style={{ color: 'var(--accent-emerald)' }}>
                     {localSavings}%
                   </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  <div className="mc-sub">
                     {t.metric_savings_sub}
                   </div>
+                  <div className="progress-bar">
+                    <div className="progress-bar-fill" style={{ width: `${localSavings}%`, background: 'var(--accent-emerald)' }} />
+                  </div>
                 </div>
 
-                <div className="glass-panel" style={{ padding: '18px 20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '600' }}>
-                      {t.metric_latency_title}
-                    </span>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-cyan)' }}></span>
+                <div className="metric-card">
+                  <div className="mc-label">
+                    <span>{t.metric_latency_title}</span>
+                    <span className="dot dot-cyan" />
                   </div>
-                  <div style={{ fontSize: '30px', fontWeight: '800', color: 'var(--accent-cyan)', marginTop: '4px' }}>
+                  <div className="mc-value" style={{ color: 'var(--accent-cyan)' }}>
                     {avgLatency} <span style={{ fontSize: '15px', fontWeight: '500', color: 'var(--text-muted)' }}>ms</span>
                   </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  <div className="mc-sub">
                     {t.metric_latency_sub}
                   </div>
+                  <div className="progress-bar">
+                    <div className="progress-bar-fill" style={{ width: `${Math.min(100, Math.round((avgLatency / 2000) * 100))}%`, background: 'var(--accent-cyan)' }} />
+                  </div>
                 </div>
 
-                <div className="glass-panel" style={{ padding: '18px 20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '600' }}>
-                      {t.metric_ratio_title}
-                    </span>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary-glow)' }}></span>
+                <div className="metric-card">
+                  <div className="mc-label">
+                    <span>{t.metric_ratio_title}</span>
+                    <span className="dot dot-blue" />
                   </div>
-                  <div style={{ fontSize: '30px', fontWeight: '800', color: 'var(--primary-glow)', marginTop: '4px' }}>
+                  <div className="mc-value" style={{ color: 'var(--primary-glow)' }}>
                     {localCalls + cascadeCalls} <span style={{ fontSize: '16px', color: 'var(--text-dim)', fontWeight: '400' }}>/</span> {cloudCalls}
                   </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  <div className="mc-sub">
                     {totalCalls} {t.metric_ratio_sub}
+                  </div>
+                  <div className="progress-bar">
+                    <div className="progress-bar-fill" style={{ width: `${totalCalls > 0 ? Math.round(((localCalls + cascadeCalls) / totalCalls) * 100) : 0}%`, background: 'var(--accent-primary)' }} />
                   </div>
                 </div>
 
-                <div className="glass-panel" style={{ padding: '18px 20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '600' }}>
-                      {t.metric_queue_title}
-                    </span>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-amber)' }}></span>
+                <div className="metric-card">
+                  <div className="mc-label">
+                    <span>{t.metric_queue_title}</span>
+                    <span className="dot dot-amber" />
                   </div>
-                  <div style={{ fontSize: '30px', fontWeight: '800', color: 'var(--accent-amber)', marginTop: '4px' }}>
+                  <div className="mc-value" style={{ color: 'var(--accent-amber)' }}>
                     {queueCount}
                   </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  <div className="mc-sub">
                     {t.metric_queue_sub}
+                  </div>
+                  <div className="progress-bar">
+                    <div className="progress-bar-fill" style={{ width: `${Math.min(100, queueCount * 20)}%`, background: 'var(--accent-amber)' }} />
                   </div>
                 </div>
 
@@ -635,7 +798,7 @@ export const App: React.FC = () => {
                         cursor: isBenchmarking ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
                         transition: 'all 0.2s'
                       }}
-                      title="Evalúa 15 cargas representativas (10 simples + 5 complejas) para calcular métricas auditables reales"
+                      title={t.btn_benchmark_title}
                     >
                       <Sparkles size={12} color="var(--accent-cyan)" />
                       {isBenchmarking ? t.btn_running_benchmark : t.btn_run_benchmark}
@@ -646,7 +809,7 @@ export const App: React.FC = () => {
                     <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-dim)' }}>{t.demo_prompts_label}</span>
                     
                     <button
-                      onClick={() => handleSend(undefined, 'Reunión rápida de sync: revisar tareas del sprint y fijar fecha')}
+                      onClick={() => handleSend(undefined, lang === 'es' ? 'Reunión rápida de sync: revisar tareas del sprint y fijar fecha' : 'Quick sync meeting: review sprint action items and set deadline')}
                       style={{ 
                         fontSize: '11px', fontWeight: '600', padding: '6px 12px', borderRadius: '8px',
                         background: 'rgba(16, 185, 129, 0.1)', color: 'var(--accent-emerald)', border: '1px solid rgba(16, 185, 129, 0.25)',
@@ -663,13 +826,13 @@ export const App: React.FC = () => {
                         background: 'rgba(56, 189, 248, 0.1)', color: 'var(--accent-cyan)', border: '1px solid rgba(56, 189, 248, 0.25)',
                         cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px'
                       }}
-                      title="Pega una nota -> Resumen + Tareas estructuradas en JSON"
+                      title={t.btn_demo_json_tasks_title}
                     >
                       <FileSpreadsheet size={12} /> {t.btn_demo_json_tasks}
                     </button>
 
                     <button
-                      onClick={() => handleSend(undefined, 'Análisis profundo y arquitectura de microservicios distribuida con alta concurrencia')}
+                      onClick={() => handleSend(undefined, lang === 'es' ? 'Análisis profundo y arquitectura de microservicios distribuida con alta concurrencia' : 'Deep analysis and distributed microservices architecture with high concurrency')}
                       style={{ 
                         fontSize: '11px', fontWeight: '600', padding: '6px 12px', borderRadius: '8px',
                         background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary-glow)', border: '1px solid rgba(99, 102, 241, 0.25)',
@@ -680,7 +843,7 @@ export const App: React.FC = () => {
                     </button>
 
                     <button
-                      onClick={() => handleSend(undefined, 'Guardar credenciales privadas: usuario juan@empresa.com con api_key: sk-proj-99482910')}
+                      onClick={() => handleSend(undefined, lang === 'es' ? 'Guardar credenciales privadas: usuario juan@empresa.com con api_key: sk-proj-99482910' : 'Store private credentials: user john@company.com with api_key: sk-proj-99482910')}
                       style={{ 
                         fontSize: '11px', fontWeight: '600', padding: '6px 12px', borderRadius: '8px',
                         background: 'rgba(244, 63, 94, 0.1)', color: 'var(--accent-rose)', border: '1px solid rgba(244, 63, 94, 0.25)',
@@ -693,7 +856,7 @@ export const App: React.FC = () => {
                     <button
                       onClick={() => {
                         setMode('cascade');
-                        handleSend(undefined, 'Diseñar arquitectura escalable en tiempo real y extraer un plan de migración paso a paso');
+                        handleSend(undefined, lang === 'es' ? 'Diseñar arquitectura escalable en tiempo real y extraer un plan de migración paso a paso' : 'Design scalable real-time architecture and extract a step-by-step migration plan');
                       }}
                       style={{ 
                         fontSize: '11px', fontWeight: '600', padding: '6px 12px', borderRadius: '8px',
@@ -707,7 +870,7 @@ export const App: React.FC = () => {
                   </div>
                 </div>
 
-                <form onSubmit={(e) => handleSend(e)} style={{ display: 'flex', gap: '10px' }}>
+                <form className="console-form" onSubmit={(e) => handleSend(e)} style={{ display: 'flex', gap: '10px' }}>
                   <input
                     type="text"
                     value={prompt}
@@ -734,7 +897,7 @@ export const App: React.FC = () => {
 
                 {/* Matriz de Decisión Multidimensional (XAI Vector) */}
                 {activeDecision && (
-                  <div style={{ marginTop: '16px', padding: '16px 20px', background: 'rgba(0,0,0,0.15)', border: '1px solid var(--border-subtle)', borderRadius: '12px' }}>
+                  <div style={{ marginTop: '16px', padding: '16px 20px', background: 'var(--bg-stripe)', border: '1px solid var(--border-subtle)', borderRadius: '12px' }}>
                     
                     {/* Header del Vector */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
@@ -747,7 +910,7 @@ export const App: React.FC = () => {
                           fontSize: '10px', fontWeight: '700', padding: '2px 8px', borderRadius: '20px',
                           background: 'rgba(99, 102, 241, 0.15)', color: 'var(--primary-glow)', border: '1px solid rgba(99, 102, 241, 0.3)'
                         }}>
-                          🎯 {activeDecision.breakdown.confidenceScore}% {t.factor_confidence}
+                          {activeDecision.breakdown.confidenceScore}% {t.factor_confidence}
                         </span>
                       </div>
 
@@ -778,7 +941,7 @@ export const App: React.FC = () => {
                           {activeDecision.breakdown.complexityScore} / 100
                         </strong>
                       </div>
-                      <div style={{ width: '100%', height: '6px', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '3px', overflow: 'hidden' }}>
+                      <div style={{ width: '100%', height: '6px', background: 'var(--border-subtle)', borderRadius: '3px', overflow: 'hidden' }}>
                         <div style={{ 
                           width: `${activeDecision.breakdown.complexityScore}%`, 
                           height: '100%', 
@@ -830,13 +993,51 @@ export const App: React.FC = () => {
 
                 {/* Streaming */}
                 {isProcessing && streamingText && (
-                  <div style={{ marginTop: '16px', padding: '14px', background: 'rgba(99, 102, 241, 0.04)', border: '1px dashed rgba(99, 102, 241, 0.3)', borderRadius: '10px' }}>
+                  <div style={{ marginTop: '14px', padding: '14px', background: 'rgba(99, 102, 241, 0.04)', border: '1px dashed rgba(99, 102, 241, 0.3)', borderRadius: '10px' }}>
                     <div style={{ fontSize: '11px', color: 'var(--primary-glow)', fontWeight: '700', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Sparkles size={12} /> {t.streaming_label}
                     </div>
-                    <div style={{ fontSize: '13px', color: 'var(--text-main)', fontStyle: 'italic', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                    <pre style={{ fontSize: '12.5px', color: 'var(--text-main)', fontFamily: 'var(--font-mono)', lineHeight: '1.6', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>
                       {streamingText}
+                    </pre>
+                  </div>
+                )}
+
+                {/* Dedicated Response Output Panel */}
+                {!isProcessing && latestResult && (
+                  <div style={{ marginTop: '14px', padding: '16px', background: 'var(--bg-code)', border: '1px solid var(--border-mid)', borderRadius: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {latestResult.source === 'local' ? <Cpu size={14} color="var(--accent-emerald)" /> : latestResult.source === 'cascade' ? <Zap size={14} color="var(--accent-cyan)" /> : <Cloud size={14} color="var(--primary-glow)" />}
+                          {t.response_panel_title}
+                        </span>
+                        <span className={latestResult.source === 'local' ? 'badge badge-green' : latestResult.source === 'cascade' ? 'badge badge-cyan' : 'badge badge-blue'}>
+                          {latestResult.source.toUpperCase()} · {latestResult.latencyMs} ms
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyResponse(latestResult.content)}
+                        className="btn-ghost"
+                        style={{ padding: '4px 10px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-main)' }}
+                      >
+                        {copiedResponse ? <Check size={12} color="var(--accent-emerald)" /> : <Copy size={12} />}
+                        {copiedResponse ? t.btn_copied_response : t.btn_copy_response}
+                      </button>
                     </div>
+                    <pre style={{
+                      fontSize: '12.5px',
+                      color: 'var(--text-main)',
+                      fontFamily: 'var(--font-mono)',
+                      lineHeight: '1.6',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      overflowX: 'auto',
+                      margin: 0
+                    }}>
+                      {RoutingEvaluator.redactPII(latestResult.content)}
+                    </pre>
                   </div>
                 )}
               </section>
@@ -848,21 +1049,38 @@ export const App: React.FC = () => {
                     <h2 style={{ fontSize: '16px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <Activity size={17} color="var(--accent-emerald)" />
                       {t.audit_title}
+                      {history.length > 0 && (
+                        <span className="badge badge-green" style={{ fontSize: '11px' }}>
+                          {history.length}
+                        </span>
+                      )}
                     </h2>
                     <div style={{ fontSize: '12px', color: 'var(--text-dim)', marginTop: '2px' }}>
                       {t.audit_desc}
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    {(['all', 'local', 'cloud', 'cascade'] as const).map((f) => (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => setHistoryFilter(f)}
+                        className={historyFilter === f ? 'btn-primary' : 'btn-ghost'}
+                        style={{ padding: '5px 10px', borderRadius: '6px', fontSize: '11px' }}
+                      >
+                        {f === 'all' ? t.filter_all : f === 'local' ? t.filter_local : f === 'cloud' ? t.filter_cloud : t.filter_cascade}
+                      </button>
+                    ))}
                     <button
                       onClick={handleExportJSON}
                       disabled={metrics.length === 0}
+                      className="btn-ghost"
                       style={{
-                        background: 'rgba(255, 255, 255, 0.04)', border: '1px solid var(--border-subtle)',
-                        color: 'var(--text-main)', padding: '6px 12px', borderRadius: '8px',
-                        fontSize: '11px', fontWeight: '600', cursor: metrics.length === 0 ? 'not-allowed' : 'pointer',
-                        display: 'flex', alignItems: 'center', gap: '6px'
+                        color: 'var(--text-main)', padding: '6px 10px', borderRadius: '8px',
+                        fontSize: '11px', cursor: metrics.length === 0 ? 'not-allowed' : 'pointer',
+                        opacity: metrics.length === 0 ? 0.5 : 1,
+                        display: 'flex', alignItems: 'center', gap: '5px'
                       }}
                     >
                       <FileCode size={12} color="var(--accent-cyan)" /> {t.btn_export_json}
@@ -870,43 +1088,59 @@ export const App: React.FC = () => {
                     <button
                       onClick={handleExportCSV}
                       disabled={metrics.length === 0}
+                      className="btn-ghost"
                       style={{
-                        background: 'rgba(255, 255, 255, 0.04)', border: '1px solid var(--border-subtle)',
-                        color: 'var(--text-main)', padding: '6px 12px', borderRadius: '8px',
-                        fontSize: '11px', fontWeight: '600', cursor: metrics.length === 0 ? 'not-allowed' : 'pointer',
-                        display: 'flex', alignItems: 'center', gap: '6px'
+                        color: 'var(--text-main)', padding: '6px 10px', borderRadius: '8px',
+                        fontSize: '11px', cursor: metrics.length === 0 ? 'not-allowed' : 'pointer',
+                        opacity: metrics.length === 0 ? 0.5 : 1,
+                        display: 'flex', alignItems: 'center', gap: '5px'
                       }}
                     >
                       <FileSpreadsheet size={12} color="var(--accent-emerald)" /> {t.btn_export_csv}
                     </button>
+                    {history.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearHistory}
+                        className="btn-ghost"
+                        style={{
+                          color: 'var(--accent-rose)', padding: '6px 10px', borderRadius: '8px',
+                          fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px'
+                        }}
+                      >
+                        <Trash2 size={12} /> {t.btn_clear_history}
+                      </button>
+                    )}
                   </div>
                 </div>
 
                 {history.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--text-dim)' }}>
-                    <Compass size={36} style={{ opacity: 0.25, marginBottom: '10px' }} />
+                  <div style={{ textAlign: 'center', padding: '36px 20px', color: 'var(--text-dim)' }}>
+                    <Compass size={32} style={{ opacity: 0.25, marginBottom: '10px' }} />
                     <p style={{ fontSize: '13px' }}>{t.audit_empty_1}</p>
                     <p style={{ fontSize: '12px', marginTop: '4px' }}>{t.audit_empty_2}</p>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {history.map((item) => (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '520px', overflowY: 'auto', paddingRight: '4px' }}>
+                    {history
+                      .filter((item) => historyFilter === 'all' || item.source === historyFilter)
+                      .map((item) => (
                       <div 
                         key={item.taskId} 
                         style={{ 
                           background: item.source === 'local' 
-                            ? 'rgba(16, 185, 129, 0.02)' 
+                            ? 'rgba(16, 185, 129, 0.03)' 
                             : item.source === 'cascade'
-                            ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.03), rgba(56, 189, 248, 0.03))'
-                            : 'rgba(99, 102, 241, 0.02)',
+                            ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(56, 189, 248, 0.04))'
+                            : 'rgba(99, 102, 241, 0.03)',
                           border: `1px solid ${
                             item.source === 'local' 
                               ? 'rgba(16, 185, 129, 0.2)' 
                               : item.source === 'cascade'
-                              ? 'rgba(99, 102, 241, 0.3)'
+                              ? 'rgba(99, 102, 241, 0.28)'
                               : 'rgba(99, 102, 241, 0.2)'
                           }`,
-                          borderRadius: '10px', padding: '16px'
+                          borderRadius: '10px', padding: '14px'
                         }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
@@ -927,19 +1161,20 @@ export const App: React.FC = () => {
                               display: 'flex', alignItems: 'center', gap: '5px'
                             }}>
                               {item.source === 'local' ? <Cpu size={11} /> : item.source === 'cascade' ? <Zap size={11} color="var(--accent-cyan)" /> : <Cloud size={11} />}
-                              {item.source === 'local' 
-                                ? (item.isRealHardware ? 'Gemini Nano (Prompt API Nativa)' : 'Gemini Nano (On-Device)')
+                              {item.source === 'local'
+                                ? (item.isRealHardware ? t.source_nano_native : t.source_nano_ondevice)
                                 : item.source === 'cascade'
-                                ? 'Co-Inferencia Híbrida (Nano Especulativo ➔ Cloud)'
-                                : 'Gemini Cloud (Firebase AI Logic)'}
+                                ? t.source_cascade
+                                : t.source_cloud}
                             </span>
 
                             {item.breakdown.hasPII && (
                               <span style={{ 
-                                fontSize: '10px', fontWeight: '700', padding: '2px 6px', borderRadius: '4px',
-                                background: 'rgba(244, 63, 94, 0.12)', color: 'var(--accent-rose)', border: '1px solid rgba(244, 63, 94, 0.25)'
+                                fontSize: '10px', fontWeight: '700', padding: '2px 7px', borderRadius: '4px',
+                                background: 'rgba(244, 63, 94, 0.12)', color: 'var(--accent-rose)', border: '1px solid rgba(244, 63, 94, 0.25)',
+                                display: 'inline-flex', alignItems: 'center', gap: '4px'
                               }}>
-                                🛡️ PRIVACIDAD ZERO-TRUST
+                                <ShieldCheck size={11} /> {t.badge_pii_shield}
                               </span>
                             )}
 
@@ -964,7 +1199,7 @@ export const App: React.FC = () => {
                             border: '1px solid rgba(56, 189, 248, 0.18)', borderRadius: '6px', 
                             padding: '6px 10px', marginBottom: '8px' 
                           }}>
-                            <strong>⚡ Pre-Extracción Especulativa Nano (&lt; 180ms):</strong> {item.speculativePreview}
+                            <strong style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Zap size={11} /> {t.speculative_nano_label}:</strong> {item.speculativePreview}
                           </div>
                         )}
 
@@ -974,7 +1209,7 @@ export const App: React.FC = () => {
 
                         {item.structuredTasks && item.structuredTasks.length > 0 && (
                           <div style={{ 
-                            background: 'rgba(0, 0, 0, 0.12)', border: '1px solid var(--border-subtle)', 
+                            background: 'var(--bg-stripe)', border: '1px solid var(--border-subtle)', 
                             borderRadius: '8px', padding: '10px 14px', marginBottom: '10px' 
                           }}>
                             <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--accent-cyan)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -987,8 +1222,8 @@ export const App: React.FC = () => {
                                     <ArrowRight size={10} color="var(--primary-glow)" /> {RoutingEvaluator.redactPII(st.title)}
                                   </span>
                                   <span style={{ 
-                                    fontSize: '9px', fontWeight: '700', padding: '1px 5px', borderRadius: '3px',
-                                    background: st.priority === 'alta' ? 'rgba(244, 63, 94, 0.15)' : 'rgba(255, 255, 255, 0.08)',
+                                    fontSize: '9px', fontWeight: '700', padding: '2px 6px', borderRadius: '4px',
+                                    background: st.priority === 'alta' ? 'rgba(244, 63, 94, 0.15)' : 'var(--bg-stripe)',
                                     color: st.priority === 'alta' ? 'var(--accent-rose)' : 'var(--text-muted)'
                                   }}>
                                     {st.priority.toUpperCase()}
@@ -1007,8 +1242,8 @@ export const App: React.FC = () => {
                             <strong style={{ color: 'var(--accent-amber)' }}>{t.router_reason_label}</strong> {RoutingEvaluator.redactPII(item.routerReason)}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '10px', color: 'var(--text-dim)' }}>
-                            <span>Certeza: <strong style={{ color: 'var(--primary-glow)' }}>{item.breakdown.confidenceScore}%</strong></span>
-                            <span>Ahorro Estimado: <strong style={{ color: 'var(--accent-emerald)' }}>+${item.breakdown.estimatedCostUSD.toFixed(5)}</strong></span>
+                              <span>{t.factor_confidence_score}: <strong style={{ color: 'var(--primary-glow)' }}>{item.breakdown.confidenceScore}%</strong></span>
+                              <span>{t.factor_cost_saved}: <strong style={{ color: 'var(--accent-emerald)' }}>+${item.breakdown.estimatedCostUSD.toFixed(5)}</strong></span>
                           </div>
                         </div>
                       </div>
@@ -1022,7 +1257,7 @@ export const App: React.FC = () => {
         </>
       )}
 
-      {/* ─── MODAL AUTH REAL CON FIREBASE ─── */}
+      {/* Auth modal */}
       <AuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
@@ -1030,9 +1265,11 @@ export const App: React.FC = () => {
         lang={lang}
       />
 
-      {/* ─── FOOTER MODERNO COMPLETO ─── */}
+      {/* Footer */}
       <Footer onNavigate={(tab) => navigateTo(tab)} lang={lang} />
 
-    </div>
+        </div>{/* /page-wrapper */}
+      </div>{/* /main-content */}
+    </div>  /* /app-shell */
   );
 };

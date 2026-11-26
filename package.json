@@ -1,9 +1,13 @@
 {
   "name": "hydra-agent",
   "version": "1.0.0",
-  "description": "HYDRA Agent IA: Orquestador híbrido local/nube con sincronización en tiempo real para Firebase #BuildHybridAI 2026",
+  "description": "HYDRA Agent AI: High-performance hybrid local/cloud AI orchestrator with real-time synchronization",
   "license": "Apache-2.0",
   "author": "Jamar Masias",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jammar24/Hydra-Agent.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",

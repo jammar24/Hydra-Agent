@@ -10,10 +10,10 @@ export const DocsView: React.FC<DocsViewProps> = ({ lang }) => {
   const t = translations[lang];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', padding: '10px 0 60px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', padding: '4px 0 24px' }}>
       
       {/* Header Docs */}
-      <div className="glass-panel" style={{ padding: '32px' }}>
+      <div className="glass-panel" style={{ padding: '22px 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
           <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(56, 189, 248, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <BookOpen size={22} color="var(--accent-cyan)" />
@@ -34,8 +34,8 @@ export const DocsView: React.FC<DocsViewProps> = ({ lang }) => {
           {t.docs_sec1_desc}
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '14px', marginBottom: '20px' }}>
-          <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '14px', marginBottom: '20px' }}>
+          <div style={{ background: 'var(--bg-stripe)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
               <Cpu size={16} color="var(--accent-cyan)" />
               <strong style={{ fontSize: '13px', color: 'var(--text-main)' }}>{t.docs_head1_name}</strong>
@@ -43,7 +43,7 @@ export const DocsView: React.FC<DocsViewProps> = ({ lang }) => {
             <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5' }}>{t.docs_head1_desc}</p>
           </div>
 
-          <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+          <div style={{ background: 'var(--bg-stripe)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
               <Cloud size={16} color="var(--primary-glow)" />
               <strong style={{ fontSize: '13px', color: 'var(--text-main)' }}>{t.docs_head2_name}</strong>
@@ -51,7 +51,7 @@ export const DocsView: React.FC<DocsViewProps> = ({ lang }) => {
             <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5' }}>{t.docs_head2_desc}</p>
           </div>
 
-          <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+          <div style={{ background: 'var(--bg-stripe)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
               <ShieldCheck size={16} color="var(--accent-rose)" />
               <strong style={{ fontSize: '13px', color: 'var(--text-main)' }}>{t.docs_head3_name}</strong>
@@ -59,7 +59,7 @@ export const DocsView: React.FC<DocsViewProps> = ({ lang }) => {
             <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5' }}>{t.docs_head3_desc}</p>
           </div>
 
-          <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+          <div style={{ background: 'var(--bg-stripe)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
               <RefreshCw size={16} color="var(--accent-emerald)" />
               <strong style={{ fontSize: '13px', color: 'var(--text-main)' }}>{t.docs_head4_name}</strong>
@@ -68,7 +68,7 @@ export const DocsView: React.FC<DocsViewProps> = ({ lang }) => {
           </div>
         </div>
 
-        <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '20px' }}>
+        <div style={{ background: 'var(--bg-stripe)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '20px' }}>
           <h4 style={{ fontSize: '14px', color: 'var(--text-main)', marginBottom: '10px' }}>{t.docs_rules_title}</h4>
           <ul style={{ paddingLeft: '20px', color: 'var(--text-muted)', fontSize: '13px', lineHeight: '1.8' }}>
             <li>{t.docs_rule_1}</li>
@@ -89,16 +89,16 @@ export const DocsView: React.FC<DocsViewProps> = ({ lang }) => {
           {t.docs_sec2_desc}
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
-          <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '14px' }}>
+          <div style={{ background: 'var(--bg-stripe)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
             <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--accent-rose)' }}>{t.docs_pii_email_title}</span>
             <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>{t.docs_pii_email_desc}</p>
           </div>
-          <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+          <div style={{ background: 'var(--bg-stripe)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
             <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--accent-rose)' }}>{t.docs_pii_key_title}</span>
             <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>{t.docs_pii_key_desc}</p>
           </div>
-          <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+          <div style={{ background: 'var(--bg-stripe)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
             <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--accent-rose)' }}>{t.docs_pii_pass_title}</span>
             <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>{t.docs_pii_pass_desc}</p>
           </div>
@@ -115,7 +115,7 @@ export const DocsView: React.FC<DocsViewProps> = ({ lang }) => {
           {[
             { 
               tag: lang === 'es' ? 'Autenticación' : 'Authentication', 
-              text: lang === 'es' ? 'Acceso seguro con Firebase Auth (Email/Contraseña y Modo Invitado 1-clic)' : 'Secure access via Firebase Auth (Email/Password and 1-Click Guest Mode)', 
+              text: lang === 'es' ? 'Acceso seguro con Firebase Auth (Google y Email/Contraseña)' : 'Secure access via Firebase Auth (Google & Email/Password)', 
               status: lang === 'es' ? 'Activo' : 'Active' 
             },
             { 
@@ -139,8 +139,8 @@ export const DocsView: React.FC<DocsViewProps> = ({ lang }) => {
               status: lang === 'es' ? 'Activo' : 'Active' 
             },
             { 
-              tag: lang === 'es' ? 'Auditoría' : 'Audit', 
-              text: lang === 'es' ? 'Trazabilidad en tiempo real con razones de enrutamiento y enmascaramiento PII' : 'Real-time traceability with routing explanation and PII masking', 
+              tag: lang === 'es' ? 'Auditoría e Historial' : 'Audit & History', 
+              text: lang === 'es' ? 'Panel de respuesta directa y persistencia de historial por usuario en Firestore + almacenamiento local' : 'Dedicated response panel and per-user history persistence in Firestore + local storage', 
               status: lang === 'es' ? 'Activo' : 'Active' 
             },
             { 
@@ -159,14 +159,14 @@ export const DocsView: React.FC<DocsViewProps> = ({ lang }) => {
               status: lang === 'es' ? 'Activo' : 'Active' 
             }
           ].map((r, idx) => (
-            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.12)', color: 'var(--primary-glow)' }}>
+            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', padding: '12px 16px', background: 'var(--bg-stripe)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.12)', color: 'var(--primary-glow)', whiteSpace: 'nowrap' }}>
                   {r.tag}
                 </span>
                 <span style={{ fontSize: '13px', color: 'var(--text-main)' }}>{r.text}</span>
               </div>
-              <span style={{ fontSize: '11px', fontWeight: '700', padding: '3px 8px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.12)', color: 'var(--accent-emerald)' }}>
+              <span style={{ fontSize: '11px', fontWeight: '700', padding: '3px 8px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.12)', color: 'var(--accent-emerald)', whiteSpace: 'nowrap' }}>
                 {r.status}
               </span>
             </div>

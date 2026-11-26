@@ -27,7 +27,7 @@ export class HybridOrchestrator {
 
   constructor(options?: OrchestratorOptions) {
     const defaultModel = options?.defaultCloudModel || (typeof import.meta !== 'undefined' && import.meta.env?.VITE_DEFAULT_CLOUD_MODEL) || 'gemini-3.5-flash-lite';
-    const cloudTimeout = options?.cloudTimeoutMs || (typeof import.meta !== 'undefined' && Number(import.meta.env?.VITE_CLOUD_TIMEOUT_MS)) || 8000;
+    const cloudTimeout = options?.cloudTimeoutMs || (typeof import.meta !== 'undefined' && Number(import.meta.env?.VITE_CLOUD_TIMEOUT_MS)) || 20000;
     const maxTokens = options?.maxLocalTokens || (typeof import.meta !== 'undefined' && Number(import.meta.env?.VITE_LOCAL_MODEL_MAX_TOKENS)) || 9216;
 
     this.localWorker = new LocalWorker();
@@ -91,9 +91,9 @@ export class HybridOrchestrator {
 
     // A. Cascade speculative routing (Nano + Cloud co-inference)
     if (decision.target === 'cascade') {
-      onStreamChunk?.('⚡ [Nano Speculative < 180ms]: Generating on-device structured pre-analysis...\n');
+      onStreamChunk?.('[Nano Speculative < 180ms]: Generating on-device structured pre-analysis...\n');
       const startCascade = performance.now();
-      
+
       // 1. Fast speculative local pass with Nano
       const nanoDraft = await this.localWorker.execute(
         task,
@@ -102,7 +102,7 @@ export class HybridOrchestrator {
         (c) => onStreamChunk?.(c)
       );
 
-      onStreamChunk?.('\n\n☁️ [Cloud Inference]: Consolidating deep reasoning context...\n');
+      onStreamChunk?.('\n\n[Cloud Inference]: Consolidating deep reasoning context...\n');
 
       // 2. Deep cloud inference
       const cloudEnhanced = await this.cloudWorker.execute(
@@ -131,22 +131,22 @@ export class HybridOrchestrator {
         isStreaming: true,
         speculativePreview: nanoDraft.content.slice(0, 120) + '...'
       };
-    } 
+    }
     // B. Direct local on-device routing
     else if (decision.target === 'local') {
       try {
         executionResult = await this.localWorker.execute(
-          task, 
-          decision.reason, 
-          decision.breakdown, 
+          task,
+          decision.reason,
+          decision.breakdown,
           onStreamChunk
         );
       } catch (err) {
         // Fallback to cloud if non-PII task fails locally
         if (isOnline && !decision.breakdown.hasPII) {
           executionResult = await this.cloudWorker.execute(
-            task, 
-            'Resilience Fallback: Local execution failed; escalated to Gemini Cloud.', 
+            task,
+            'Resilience Fallback: Local execution failed; escalated to Gemini Cloud.',
             decision.breakdown,
             onStreamChunk
           );
@@ -155,14 +155,14 @@ export class HybridOrchestrator {
           return { decision, queued: true };
         }
       }
-    } 
+    }
     // C. Cloud routing
     else {
       try {
         executionResult = await this.cloudWorker.execute(
-          task, 
-          decision.reason, 
-          decision.breakdown, 
+          task,
+          decision.reason,
+          decision.breakdown,
           onStreamChunk
         );
       } catch (cloudErr) {
@@ -220,6 +220,11 @@ export class HybridOrchestrator {
     return JSON.stringify(this.metrics, null, 2);
   }
 
+  private sanitizeCsvCell(value: string): string {
+    const neutralized = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+    return `"${neutralized.replace(/"/g, '""')}"`;
+  }
+
   public exportAuditLogsAsCSV(): string {
     const headers = ['ID', 'TaskID', 'Source', 'LatencyMs', 'Tokens', 'Score', 'ConfidencePct', 'CostSavedUSD', 'HasPII', 'Timestamp', 'Reason'];
     const rows = this.metrics.map(m => [
@@ -231,9 +236,9 @@ export class HybridOrchestrator {
       m.score,
       `${m.confidenceScore}%`,
       `$${m.costSavedUSD.toFixed(6)}`,
-      m.hasPII ? 'SI' : 'NO',
+      m.hasPII ? 'YES' : 'NO',
       new Date(m.timestamp).toISOString(),
-      `"${m.reason.replace(/"/g, '""')}"`
+      this.sanitizeCsvCell(m.reason)
     ]);
     return [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
   }

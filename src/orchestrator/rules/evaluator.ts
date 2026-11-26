@@ -54,15 +54,20 @@ export class RoutingEvaluator {
       /\b(sk-[a-zA-Z0-9_\-]{6,}|AIza[0-9A-Za-z-_]{10,}|bearer\s+[a-zA-Z0-9_\-\.]{10,})\b/gi,
       '[API_KEY_CONFIDENCIAL]'
     );
-    // Redact explicit passwords
+    // Redact explicit passwords and private tokens
     redacted = redacted.replace(
-      /\b(password|contrase[ñn]a|clave)\s*[:=]\s*\S+/gi,
+      /\b(password|contrase[ñn]a|clave|token_privado)\s*[:=]\s*\S+/gi,
       '$1: [PASSWORD_PROTEGIDO]'
     );
     // Redact credit card numbers
     redacted = redacted.replace(
       /\b(?:\d{4}[ -]?){3}\d{4}\b/g,
       '[TARJETA_PROTEGIDA]'
+    );
+    // Redact SSN and government IDs
+    redacted = redacted.replace(
+      /\b\d{3}-\d{2}-\d{4}\b|\b\d{8,10}\b/g,
+      '[ID_PROTEGIDO]'
     );
     return redacted;
   }
@@ -135,7 +140,7 @@ export class RoutingEvaluator {
       if (ctx.modelStatus === 'ready') {
         return {
           target: 'local',
-          reason: `🛡️ Privacidad: Datos sensibles detectados (${breakdown.detectedPIITypes.join(', ')}). Enrutamiento forzado on-device en Gemini Nano sin salida a internet.`,
+          reason: `Privacidad: Datos sensibles detectados (${breakdown.detectedPIITypes.join(', ')}). Enrutamiento forzado on-device en Gemini Nano sin salida a internet.`,
           complexity,
           breakdown,
           decidedAt: Date.now(),
@@ -144,7 +149,7 @@ export class RoutingEvaluator {
       } else {
         return {
           target: 'queue',
-          reason: `🛡️ Privacidad: Datos sensibles detectados (${breakdown.detectedPIITypes.join(', ')}). Retenido en almacenamiento seguro hasta activar el modelo local.`,
+          reason: `Privacidad: Datos sensibles detectados (${breakdown.detectedPIITypes.join(', ')}). Retenido en almacenamiento seguro hasta activar el modelo local.`,
           complexity,
           breakdown,
           decidedAt: Date.now(),
@@ -158,7 +163,7 @@ export class RoutingEvaluator {
       if (ctx.isOnline && ctx.modelStatus === 'ready') {
         return {
           target: 'cascade',
-          reason: `🔄 Orquestación en Cascada: Gemini Nano genera un borrador especulativo instantáneo (< 180ms) mientras la nube procesa la síntesis profunda.`,
+          reason: `Orquestación en Cascada: Gemini Nano genera un borrador especulativo instantáneo (< 180ms) mientras la nube procesa la síntesis profunda.`,
           complexity,
           breakdown,
           decidedAt: Date.now(),
@@ -215,7 +220,7 @@ export class RoutingEvaluator {
     if (complexity === 'simple' && ctx.modelStatus === 'ready') {
       return {
         target: 'local',
-        reason: `⚡ Inferencia Óptima Local (Score: ${breakdown.complexityScore}/100, ${breakdown.tokenCount} tokens): Resuelto on-device en Gemini Nano sin consumo de red.`,
+        reason: `Inferencia Óptima Local (Score: ${breakdown.complexityScore}/100, ${breakdown.tokenCount} tokens): Resuelto on-device en Gemini Nano sin consumo de red.`,
         complexity: 'simple',
         breakdown,
         decidedAt: Date.now(),
@@ -225,8 +230,8 @@ export class RoutingEvaluator {
 
     if (ctx.isOnline) {
       const reason = ctx.modelStatus !== 'ready'
-        ? `☁️ Modelo local no activo en el navegador; delegando dinámicamente a Gemini Cloud.`
-        : `☁️ Cómputo Complejo (Score: ${breakdown.complexityScore}/100, Intención: ${breakdown.intent}): Escalado a Gemini Cloud para razonamiento profundo.`;
+        ? `Modelo local no activo en el navegador; delegando dinámicamente a Gemini Cloud.`
+        : `Cómputo Complejo (Score: ${breakdown.complexityScore}/100, Intención: ${breakdown.intent}): Escalado a Gemini Cloud para razonamiento profundo.`;
       return {
         target: 'cloud',
         reason,
@@ -240,7 +245,7 @@ export class RoutingEvaluator {
     if (ctx.modelStatus === 'ready') {
       return {
         target: 'local',
-        reason: '📶 Modo Avión Activo: Sin red disponible. Degradación resiliente a Gemini Nano on-device.',
+        reason: 'Modo Avión Activo: Sin red disponible. Degradación resiliente a Gemini Nano on-device.',
         complexity,
         breakdown,
         decidedAt: Date.now(),
@@ -250,7 +255,7 @@ export class RoutingEvaluator {
 
     return {
       target: 'queue',
-      reason: '📥 Sin red ni modelo local: Tarea almacenada en cola segura para procesamiento al reconectar.',
+      reason: 'Sin red ni modelo local: Tarea almacenada en cola segura para procesamiento al reconectar.',
       complexity,
       breakdown,
       decidedAt: Date.now(),
