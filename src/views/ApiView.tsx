@@ -19,8 +19,9 @@ export const ApiView: React.FC<ApiViewProps> = ({ lang }) => {
   const dispatchExample = `import { HybridOrchestrator } from './orchestrator';
 
 const orchestrator = new HybridOrchestrator({
+  defaultCloudModel: 'gemini-3.5-flash-lite',
   maxLocalTokens: 9216,
-  cloudTimeoutMs: 8000,
+  cloudTimeoutMs: 20000,
   initialMode: 'auto' // 'auto' | 'cascade' | 'local_only' | 'cloud_only'
 });
 
@@ -129,6 +130,38 @@ console.log("Ready:", status.isReady, "Native hardware:", status.isNative);`;
           color: 'var(--text-main)', lineHeight: '1.6', overflowX: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch'
         }}>
           {localInitExample}
+        </pre>
+      </section>
+
+      {/* Endpoint 3: Env & Cloud REST + Audit Export */}
+      <section className="glass-panel" style={{ padding: '28px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+          <h2 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-main)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px', minWidth: 0 }}>
+            <span style={{ padding: '3px 8px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.15)', color: 'var(--accent-emerald)', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>CLOUD & AUDIT</span>
+            <code style={{ wordBreak: 'break-word' }}>CloudWorker &amp; Export API</code>
+          </h2>
+        </div>
+
+        <p style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: '1.6', marginBottom: '16px' }}>
+          {lang === 'es'
+            ? 'Configuración de variables de entorno para inferencia en vivo con Gemini Cloud (timeout de 20s y trazabilidad explícita [Fallback: ...] ante errores HTTP/red) junto con exportación sanitizada JSON/CSV.'
+            : 'Environment configuration for live Gemini Cloud inference (20s timeout and explicit [Fallback: ...] surfacing on HTTP/network errors) alongside sanitized JSON/CSV audit exports.'}
+        </p>
+
+        <pre style={{
+          background: 'var(--bg-code)', padding: '16px 18px', borderRadius: '10px',
+          border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: '12px',
+          color: 'var(--text-main)', lineHeight: '1.6', overflowX: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch'
+        }}>
+{`# .env.local / Vercel Environment Variables
+VITE_DEFAULT_CLOUD_MODEL=gemini-3.5-flash-lite
+VITE_LOCAL_MODEL_MAX_TOKENS=9216
+VITE_CLOUD_TIMEOUT_MS=20000
+VITE_GEMINI_API_KEY=<your-gemini-api-key>
+
+// Export sanitized audit telemetry (formula-injection safe CSV & JSON)
+const jsonLogs = orchestrator.exportAuditLogsAsJSON();
+const csvLogs  = orchestrator.exportAuditLogsAsCSV();`}
         </pre>
       </section>
 

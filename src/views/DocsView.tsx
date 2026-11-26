@@ -125,7 +125,7 @@ export const DocsView: React.FC<DocsViewProps> = ({ lang }) => {
             },
             { 
               tag: lang === 'es' ? 'Inferencia Cloud' : 'Cloud Inference', 
-              text: lang === 'es' ? 'Procesamiento complejo en Gemini Cloud vía Firebase AI Logic con streaming' : 'Complex processing on Gemini Cloud via Firebase AI Logic with token streaming', 
+              text: lang === 'es' ? 'Procesamiento complejo en Gemini Cloud (gemini-3.5-flash-lite) con timeout de 20s, streaming y fallback explícito [Fallback: ...]' : 'Complex processing on Gemini Cloud (gemini-3.5-flash-lite) with 20s timeout, token streaming, and explicit [Fallback: ...] error surfacing', 
               status: lang === 'es' ? 'Activo' : 'Active' 
             },
             { 

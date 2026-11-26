@@ -954,7 +954,7 @@ export const App: React.FC = () => {
                     </div>
 
                     {/* Grid de 4 Vectores */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 170px), 1fr))', gap: '8px' }}>
                       
                       <div style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{t.factor_tokens}</span>
@@ -1203,7 +1203,7 @@ export const App: React.FC = () => {
                           </div>
                         )}
 
-                        <div style={{ fontSize: '13px', color: 'var(--text-main)', lineHeight: '1.6', marginBottom: '10px', whiteSpace: 'pre-wrap' }}>
+                        <div style={{ fontSize: '13px', color: 'var(--text-main)', lineHeight: '1.6', marginBottom: '10px', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                           {RoutingEvaluator.redactPII(item.content)}
                         </div>
 

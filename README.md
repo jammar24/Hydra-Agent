@@ -46,7 +46,7 @@ flowchart TD
     NetCheck -->|YES: Online| Head2[Head 2: Cloud Inference Engine]
     NetCheck -->|NO: Airplane Mode| OfflineQueue[(Head 4: Offline Storage Queue)]
     
-    Head2 -->|Timeout > 8s / Network Error| FallbackLocal[Resilient Degrade to Local Nano]
+    Head2 -->|Timeout > 20s / Network Error| FallbackLocal[Resilient Degrade or Explicit Fallback]
     
     Head1 --> Audit[Audit Log & Redacted Telemetry]
     Head2 --> Audit
@@ -106,7 +106,7 @@ Application will be available at `http://localhost:5173`.
 
 ---
 
-## 5. Production Deployment
+## 5. Production Deployment & Environment Variables
 
 Pre-configured for static hosting on Vercel (`vercel.json`) and Firebase Hosting (`firebase.json`):
 
@@ -117,6 +117,15 @@ npm run build
 # Deploy to Vercel
 npx vercel --prod
 ```
+
+### Environment Variables (`.env.example` / Vercel)
+| Variable | Default / Example | Purpose |
+|---|---|---|
+| `VITE_FIREBASE_*` | Firebase project config | Auth, Firestore (`inference_audit`), and App Check |
+| `VITE_DEFAULT_CLOUD_MODEL` | `gemini-3.5-flash-lite` | Target Gemini Cloud model |
+| `VITE_LOCAL_MODEL_MAX_TOKENS` | `9216` | Token ceiling before cloud escalation |
+| `VITE_CLOUD_TIMEOUT_MS` | `20000` | Cloud `AbortController` & worker timeout (20s) |
+| `VITE_GEMINI_API_KEY` | `<your-key>` | Live Gemini Cloud REST API key (never commit real keys) |
 
 Live Production Application: [https://hydra-agent.vercel.app/](https://hydra-agent.vercel.app/)
 

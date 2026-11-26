@@ -105,7 +105,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onGoToDashboard, onGoToDocs,
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '16px' }}>
           
           {/* Cabeza 1: Local */}
           <div className="glass-panel" style={{ padding: '28px 24px' }}>
@@ -240,7 +240,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onGoToDashboard, onGoToDocs,
               flexShrink: 0
             }}
           />
-          <div style={{ flex: 1, minWidth: '220px' }}>
+          <div style={{ flex: 1, minWidth: 'min(100%, 220px)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '4px' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-main)' }}>
                 Jamar Masias

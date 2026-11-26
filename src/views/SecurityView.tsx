@@ -131,6 +131,11 @@ service cloud.firestore {
   }
 }`}
         </pre>
+        <p style={{ color: 'var(--text-muted)', fontSize: '12.5px', lineHeight: '1.6', marginTop: '14px' }}>
+          {lang === 'es'
+            ? 'Higiene de secretos y exportaciones: las credenciales (VITE_FIREBASE_* y VITE_GEMINI_API_KEY) residen únicamente en .env.local (excluido por .gitignore) o en variables de entorno de Vercel, y las exportaciones CSV neutralizan inyección de fórmulas (=, +, -, @).'
+            : 'Secret & export hygiene: credentials (VITE_FIREBASE_* and VITE_GEMINI_API_KEY) live strictly in gitignored .env.local or Vercel environment variables, and CSV exports neutralize formula injection (=, +, -, @).'}
+        </p>
       </section>
 
     </div>
